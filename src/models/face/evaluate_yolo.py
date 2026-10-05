@@ -35,7 +35,7 @@ def main():
         project=output_dir,
         name=folder_name,
         iou=args.iou,
-        conf=0.55,    # <-- THIS will bring False Positives down from 118 to ~42
+        conf=0.55,
         visualize=args.visualize,
     )
 
