@@ -184,14 +184,15 @@ def calculate_window_features(df: pd.DataFrame) -> pd.DataFrame:
     df['person_seen_recently'] = (long_mem == 1) | short_mem
 
 #    Sustained Audio Windowing
-    sustained_win = int(AnalysisConfig.SUSTAINED_KCDS_WINDOW_SEC * samples_per_sec)
+    sustained_kcds_win = int(AnalysisConfig.SUSTAINED_KCDS_WINDOW_SEC * samples_per_sec)
     df['is_sustained_kcds'] = df.groupby('video_id')['has_cds'].transform(
-        lambda s: s.rolling(window=sustained_win).mean()
+        lambda s: s.rolling(window=sustained_kcds_win).mean()
     ) >= AnalysisConfig.SUSTAINED_KCDS_THRESHOLD
 
+    sustained_ohs_win = int(AnalysisConfig.SUSTAINED_OHS_WINDOW_SEC * samples_per_sec)
     df['is_sustained_ohs'] = df.groupby('video_id')['has_ohs'].transform(
-        lambda s: s.rolling(window=sustained_win).mean()
-    ) >= AnalysisConfig.MIN_PRESENCE_OHS_FRACTION
+        lambda s: s.rolling(window=sustained_ohs_win).mean()
+    ) >= AnalysisConfig.SUSTAINED_OHS_THRESHOLD
 
     return df
 
