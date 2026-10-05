@@ -175,7 +175,7 @@ def plot_segment_timeline(predictions_df, ground_truth_df, video_name, save_path
     ax.set_xlim(0, max_time)
     
     # Title
-    mode_suffix = " (Binary)" if binary_mode else ""
+    mode_suffix = " (Binary)" if is_binary else ""
     ax.set_title(f"Segment Timeline Comparison for Video: {video_name}{mode_suffix}", fontsize=14)
 
     # Custom Legend
@@ -535,20 +535,11 @@ def save_performance_results(results, detailed_metrics, total_seconds, total_hou
             f.write(f"Macro Average Kappa:      {kappa_val:.4f}\n\n")
 
         # Write category-specific performance
+        # Write category-specific performance
         f.write("CATEGORY-SPECIFIC PERFORMANCE\n")
         f.write("=" * 70 + "\n\n")
         for category, metrics in detailed_metrics.items():
-          # Skip macro_avg AND any non-dict entries (like overall_kappa)
-          if category in ['macro_avg', 'overall_kappa'] or not isinstance(
-              metrics, dict
-          ):
-            continue
-
-          for category, metrics in detailed_metrics.items():
-            # Skip macro_avg AND any non-dict entries (like overall_kappa)
-            if category in ['macro_avg', 'overall_kappa'] or not isinstance(
-                metrics, dict
-            ):
+            if category in ['macro_avg', 'overall_kappa'] or not isinstance(metrics, dict):
                 continue
 
             stats = results['category_accuracies'].get(
@@ -691,34 +682,21 @@ def run_evaluation(predictions_path: Path, output_folder: Path, mode: str, video
         sys.exit(1)
 
     ground_truth_path = Analysis.GROUND_TRUTH_SEGMENTS_CSV
-    try:
-        ground_truth_df = pd.read_csv(ground_truth_path, delimiter=';')
-    except FileNotFoundError:
-        print(f"❌ Error: Ground truth file not found at {ground_truth_path}")
-        sys.exit(1)
-
-    # --- Clean up GT DataFrame for potential malformed columns ---
-    ground_truth_df = ground_truth_df.loc[:, ~ground_truth_df.columns.str.contains('^Unnamed')]
-    ground_truth_df.dropna(axis=1, how='all', inplace=True)
-    ground_truth_df.columns = ground_truth_df.columns.str.strip()
-    
-    for col in ground_truth_df.columns:
-        if ground_truth_df[col].dtype == 'object':
-            ground_truth_df[col] = ground_truth_df[col].str.strip()
+    ground_truth_df = pd.read_csv(ground_truth_path)
             
     # --- Apply Binary Reclassification ---
     if mode == 'binary':
         predictions_df = reclassify_to_binary(predictions_df)
         ground_truth_df = reclassify_to_binary(ground_truth_df)
 
-    # Standardize times
-    if 'start_time_min' in ground_truth_df.columns and 'end_time_min' in ground_truth_df.columns:
-        ground_truth_df['start_time_sec'] = ground_truth_df['start_time_min'].apply(time_to_seconds)
-        ground_truth_df['end_time_sec'] = ground_truth_df['end_time_min'].apply(time_to_seconds)
-
-    if 'start_time_min' in predictions_df.columns and 'end_time_min' in predictions_df.columns:
-            predictions_df['start_time_sec'] = predictions_df['start_time_min'].apply(time_to_seconds)
-            predictions_df['end_time_sec'] = predictions_df['end_time_min'].apply(time_to_seconds)
+    # Standardize timestamps across both GT and predictions
+    for df in [ground_truth_df, predictions_df]:
+        if 'start_time_sec' in df.columns:
+            df['start_time_sec'] = pd.to_numeric(df['start_time_sec'], errors='coerce')
+            df['end_time_sec'] = pd.to_numeric(df['end_time_sec'], errors='coerce')
+        elif 'start_time_min' in df.columns:
+            df['start_time_sec'] = df['start_time_min'].apply(time_to_seconds)
+            df['end_time_sec'] = df['end_time_min'].apply(time_to_seconds)
         
     # --- CORE EVALUATION ---
     # Pass the video_list into the evaluation logic
