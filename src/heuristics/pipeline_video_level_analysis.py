@@ -48,19 +48,18 @@ def apply_cpd_smoothing(frame_data: pd.DataFrame,
             segment_slice = video_df.iloc[start_idx:end_idx]
             if not segment_slice.empty:
                 counts = segment_slice['interaction_type'].value_counts(normalize=True)
-                has_eng = (segment_slice['rule1_turn_taking'].any() | 
-                           segment_slice['rule2_close_proximity'].any() | 
-                           segment_slice['rule3_kcds_speaking'].any())
+                has_eng = (
+                    segment_slice['rule1_turn_taking'].any() | 
+                    segment_slice['rule2_close_proximity'].any() | 
+                    segment_slice['rule3_kcds_speaking'].any()
+                )
                 
-                if has_eng and counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD_LOW:
-                    state = 1  # Interacting (Rule-supported)
-                elif counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD:
-                    state = 1  # Interacting (Density-supported)
+                # Option 2: Clean single interaction density threshold
+                if has_eng and counts.get(1, 0) >= AnalysisConfig.CPD_INTERACTING_THRESHOLD:
+                    state = 1  # Interacting
                 elif (counts.get(1, 0) + counts.get(2, 0)) >= AnalysisConfig.CPD_TOTAL_PRESENCE_FLOOR:
-                    state = 2  # Available (or "Not Interacting" in binary)
+                    state = 2  # Available (or Not Interacting in binary)
                 else:
-                    # This is the "Alone" path. 
-                    # In Binary mode, there is no state 3, so it MUST be state 2.
                     state = 3 if social_state_mode == "tertiary" else 2
     
                 video_df.iloc[start_idx:end_idx, video_df.columns.get_loc('interaction_type')] = state
