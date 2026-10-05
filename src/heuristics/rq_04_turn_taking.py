@@ -60,17 +60,19 @@ def process_block(block):
     first_speaker = block[0]['speech_type']
     
     if turns > 0:
+        succ_block_dur = block_duration  # only counted if an exchange occurred
         if first_speaker == 'KCHI':
             succ_init = 1  # Successful exchange led by child
         else:
             succ_resp = 1  # Successful exchange led by adult
     else:
+        succ_block_dur = 0.0           # zero duration for unanswered bids
         if first_speaker == 'KCHI':
             fail_init = 1  # Child spoke, but no one replied
         else:
             fail_resp = 1  # Adult spoke, but child didn't reply
             
-    return turns, succ_init, succ_resp, fail_init, fail_resp, block_duration
+    return turns, succ_init, succ_resp, fail_init, fail_resp, succ_block_dur, block_duration
 
 def count_directional_turns(vocalizations: pd.DataFrame, 
                             segments_df: pd.DataFrame,
@@ -131,8 +133,7 @@ def count_directional_turns(vocalizations: pd.DataFrame,
     
     results = []
     raw_turns_df = []
-    MAX_TURN_GAP = AnalysisConfig.MAX_TURN_TAKING_GAP_SEC
-    MAX_SAME_GAP = AnalysisConfig.MAX_SAME_SPEAKER_GAP_SEC
+    turn_gaps_list = []
 
     # 3. Iterate by Child -> Fold -> Segment
     for child_id, folds in fold_map.items():
@@ -184,32 +185,51 @@ def count_directional_turns(vocalizations: pd.DataFrame,
                         })
                     
                     # Process Turn Blocks
-                    total_turns, s_init, s_resp, f_init, f_resp, total_block_duration = 0, 0, 0, 0, 0, 0
+                    total_turns, s_init, s_resp, f_init, f_resp = 0, 0, 0, 0, 0
+                    succ_block_duration = 0.0
+                    all_block_duration = 0.0
                     
                     if not seg_vocs.empty:
+                        # Loop through all subsequent vocalizations one by one
                         current_block = [seg_vocs.iloc[0].to_dict()]
                         for i in range(1, len(seg_vocs)):
                             prev = seg_vocs.iloc[i-1]
                             curr = seg_vocs.iloc[i]
+                            # calculate gap between end of previous and start of current vocalization
                             gap = curr['start_time_seconds'] - prev['end_time_seconds']
-                            threshold = MAX_SAME_GAP if curr['speech_type'] == prev['speech_type'] else MAX_TURN_GAP
+                            threshold = AnalysisConfig.MAX_SAME_SPEAKER_GAP_SEC if curr['speech_type'] == prev['speech_type'] else AnalysisConfig.MAX_TURN_TAKING_GAP_SEC
                             
                             if gap <= threshold:
                                 current_block.append(curr.to_dict())
+                                # Record inter-speaker gap whenever the speaker changes
+                                if curr['speech_type'] != prev['speech_type']:
+                                    # Floor at 0.0 so overlaps represent zero intervening silence
+                                    turn_gaps_list.append({
+                                        'child_id': child_id,
+                                        'age_at_recording': seg['age_at_recording'],
+                                        'video_name': seg['video_name'],
+                                        'speaker_from': prev['speech_type'],
+                                        'speaker_to': curr['speech_type'],
+                                        'gap_seconds': max(0.0, gap)
+                                    })
                             else:
-                                t, si, sr, fi, fr, bd = process_block(current_block)
-                                total_turns += t; s_init += si; s_resp += sr; f_init += fi; f_resp += fr
-                                total_block_duration += bd
+                                # if gap between two vocalizations exceeds the allowed threshold
+                                turns, succ_init, succ_resp, fail_init, fail_resp, succ_block_dur, block_duration = process_block(current_block)
+                                total_turns += turns; s_init += succ_init; s_resp += succ_resp; f_init += fail_init; f_resp += fail_resp
+                                succ_block_duration += succ_block_dur
+                                all_block_duration += block_duration
+                                # start new conversational block
                                 current_block = [curr.to_dict()]
                         
-                        t, si, sr, fi, fr, bd = process_block(current_block)
-                        total_turns += t; s_init += si; s_resp += sr; f_init += fi; f_resp += fr
-                        total_block_duration += bd
-
+                        # process the final block
+                        turns, succ_init, succ_resp, fail_init, fail_resp, succ_block_dur, block_duration = process_block(current_block)
+                        total_turns += turns; s_init += succ_init; s_resp += succ_resp; f_init += fail_init; f_resp += fail_resp
+                        succ_block_duration += succ_block_dur
+                        all_block_duration += block_duration
+                        
                     results.append({
                         'child_id': child_id,
                         'fold': fold_num,
-                        'block_duration_sec': total_block_duration,
                         'video_name': seg['video_name'],
                         'age_at_recording': seg['age_at_recording'],
                         'segment_start': seg['start_time_sec'],
@@ -220,10 +240,12 @@ def count_directional_turns(vocalizations: pd.DataFrame,
                         'successful_responses': s_resp,
                         'unanswered_child_bids': f_init,
                         'unanswered_adult_prompts': f_resp,
+                        'successful_block_duration_sec': succ_block_duration,
+                        'all_block_duration_sec': all_block_duration,
                         'segment_duration_minutes': current_duration / 60
                     })
         
-    return pd.DataFrame(results), pd.DataFrame(raw_turns_df)
+    return pd.DataFrame(results), pd.DataFrame(raw_turns_df), pd.DataFrame(turn_gaps_list)
 
 def main(social_state_mode: str = 'tertiary',
          output_folder: Path = None,
@@ -267,13 +289,24 @@ def main(social_state_mode: str = 'tertiary',
     segments_df = pd.read_csv(segments_path)
     all_vocalizations = parse_rttm(target_speech_types=['KCHI', 'KCDS'])
     
-    # 3. Categorize Social Blocks
-    final_df, raw_turns_df = count_directional_turns(all_vocalizations, segments_df, use_folds=use_folds)
+    # 3. Categorize Social Blocks & Measure Turn Gaps
+    final_df, raw_turns_df, turn_gaps_df = count_directional_turns(all_vocalizations, segments_df, use_folds=use_folds)
     
     # 4. Calculate Global Totals and Proportions
+    final_df['total_successful_blocks'] = (
+        final_df['successful_initiations'] + final_df['successful_responses']
+    )
+    
     final_df['total_attempts'] = (
         final_df['successful_initiations'] + final_df['successful_responses'] +
         final_df['unanswered_child_bids'] + final_df['unanswered_adult_prompts']
+    )
+    
+    # Direct Average Conversational Block Duration (only for successful exchanges)
+    final_df['avg_conversational_block_duration_sec'] = np.where(
+        final_df['total_successful_blocks'] > 0,
+        final_df['successful_block_duration_sec'] / final_df['total_successful_blocks'],
+        np.nan
     )
     
     # Calculate percentages of the total social landscape
@@ -376,6 +409,32 @@ def main(social_state_mode: str = 'tertiary',
         print(f'✅ Individual child turn durations saved to {output_path_td}')
     else:
         print('⚠️ No child vocalizations found to save for turn duration analysis.')
+        
+    # ----- Part 4: MEAN TURN GAP (INTER-SPEAKER LATENCY) PER CHILD -----
+    if not turn_gaps_df.empty:
+        turn_gaps_df['age_at_recording'] = (
+            turn_gaps_df['age_at_recording'].astype(str)
+            .str.replace('"', '').str.replace(',', '.')
+            .str.strip()
+        )
+        turn_gaps_df['age_at_recording'] = pd.to_numeric(turn_gaps_df['age_at_recording'], errors='coerce')
+        
+        # Calculate overall mean & median latency per child
+        child_gaps = turn_gaps_df.groupby('child_id').agg(
+            mean_gap_sec=('gap_seconds', 'mean'),
+            median_gap_sec=('gap_seconds', 'median'),
+            std_gap_sec=('gap_seconds', 'std'),
+            min_gap_sec=('gap_seconds', 'min'),
+            max_gap_sec=('gap_seconds', 'max'),
+            total_turn_transitions=('gap_seconds', 'count'),
+            age_at_recording=('age_at_recording', 'min')
+        ).reset_index()
+        
+        output_path_tg = (base_folder / f'{Analysis.TURN_GAPS_CSV.stem}{suffix}.csv')
+        child_gaps.to_csv(output_path_tg, index=False)
+        print(f'✅ Mean inter-speaker turn gap per child saved to: {output_path_tg}')
+    else:
+        print('⚠️ No inter-speaker turn transitions found to calculate gap latencies.')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Turn-Taking Analysis for Naturalistic Social Interactions")
