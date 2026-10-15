@@ -1,6 +1,6 @@
 import argparse
 import shutil
-from pathlib import Path
+import sys
 import pandas as pd
 from sklearn.model_selection import GroupKFold
 from datetime import datetime
@@ -107,6 +107,9 @@ def run_cross_validation(mode="validation", social_state_mode="tertiary", max_co
                     if current_f1 > best_f1:
                         best_f1 = current_f1
                         best_params = combo
+                else:
+                    print(f"❌ Combo {c_idx} failed! Error:\n{error}")
+                    sys.exit(1)
             
             print(f"✅ Best Train F1: {best_f1:.4f}. Now validating on unseen test videos...")
 
