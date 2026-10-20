@@ -170,9 +170,10 @@ def draw_labeled_box(
     return annotated
 
 
-def draw_rule_criteria_card_bottom_right(
+def draw_rule_criteria_card(
     image: np.ndarray,
     rules: List[Dict[str, any]],
+    align: str = "right",
     alpha: float = 0.94,
     margin: int = 30,
     bottom_clearance: int = 0,
@@ -225,12 +226,17 @@ def draw_rule_criteria_card_bottom_right(
     total_h += pad_y
     card_h = total_h
 
-    # Card coordinates (PINNED BOTTOM-RIGHT with bottom_clearance for the audio badge)
-    x2 = img_w - margin
-    x1 = x2 - card_w
+    # Horizontal coordinate positioning based on alignment
+    if align.lower() == "left":
+        x1 = margin
+        x2 = x1 + card_w
+    else:  # default right
+        x2 = img_w - margin
+        x1 = x2 - card_w
+
     y2 = img_h - margin - bottom_clearance
     y1 = y2 - card_h
-
+    
     # White Background
     overlay = annotated.copy()
     cv2.rectangle(overlay, (x1, y1), (x2, y2), COLOR_CARD_BG, -1)
@@ -296,6 +302,7 @@ def draw_audio_badge_below(
     has_kcds: bool,
     has_kcs: bool,
     has_ohs: bool,
+    align: str = "right",
     spacing: int = 14,
     font_scale: float = 2.5,
 ) -> np.ndarray:
@@ -319,9 +326,13 @@ def draw_audio_badge_below(
     badge_w = text_w + (BADGE_PAD * 2)
     badge_h = text_h + baseline + (BADGE_PAD * 2)
 
-    # Align badge with the right edge of the card above it
-    x2 = c_x2
-    x1 = x2 - badge_w
+    if align.lower() == "left":
+        x1 = c_x1
+        x2 = x1 + badge_w
+    else:  # default right
+        x2 = c_x2
+        x1 = x2 - badge_w
+
     y1 = c_y2 + spacing
     y2 = y1 + badge_h
 
@@ -392,6 +403,7 @@ def build_rules_checklist_for_segment_state(
 def draw_frame_number_badge(
     image: np.ndarray,
     frame_idx: int,
+    align: str = "right",
     margin: int = 30,
     font_scale: float = 2.5,
     pad_x: int = 24,
@@ -408,11 +420,16 @@ def draw_frame_number_badge(
     card_w = text_w + (pad_x * 2)
     card_h = text_h + (pad_y * 2)
 
-    x2 = img_w - margin
-    x1 = x2 - card_w
+    if align.lower() == "left":
+        x1 = margin
+        x2 = x1 + card_w
+    else:  # default right
+        x2 = img_w - margin
+        x1 = x2 - card_w
+
     y1 = margin
     y2 = y1 + card_h
-
+    
     overlay = annotated.copy()
     cv2.rectangle(overlay, (x1, y1), (x2, y2), COLOR_CARD_BG, -1)
     cv2.addWeighted(overlay, 0.94, annotated, 0.06, 0, annotated)
@@ -440,6 +457,7 @@ def process_image(
     segments_df: pd.DataFrame,
     face_model: YOLO,
     person_model: YOLO,
+    align: str = "right",
 ) -> Optional[Dict]:
     video_name, video_frame = parse_filename_identifiers(image_path)
     if video_name is None or video_frame is None:
@@ -489,15 +507,14 @@ def process_image(
         annotated = draw_labeled_box(
             annotated,
             bbox,
-            f"Face ({conf:.2f}), px: {prox:.2f}",
+            f"Face ({conf:.2f}), prox: {prox:.2f}",
             COLOR_FACE_BGR,
             font_scale=2.5,
             place_above=True,
         )
 
     # 1. Frame Number Badge (Top-Right)
-    annotated = draw_frame_number_badge(annotated, int(video_frame), margin=30)
-
+    annotated = draw_frame_number_badge(annotated, int(video_frame), align=align, margin=30)
     # 2. Classification Rules Card + Separate Rose Audio Badge (Bottom-Right)
     # Estimate clearance needed below the card for the audio badge + spacing
     sample_text = "Audio: KCDS + KCS + OHS"
@@ -506,11 +523,11 @@ def process_image(
     audio_spacing = 16
     bottom_clearance = audio_badge_h + audio_spacing
 
-    annotated, card_bounds = draw_rule_criteria_card_bottom_right(
-        annotated, rules, margin=30, bottom_clearance=bottom_clearance
+    annotated, card_bounds = draw_rule_criteria_card(
+        annotated, rules, align=align, margin=30, bottom_clearance=bottom_clearance
     )
     final_output = draw_audio_badge_below(
-        annotated, card_bounds, has_kcds, has_kcs, has_ohs, spacing=audio_spacing, font_scale=2.5
+        annotated, card_bounds, has_kcds, has_kcs, has_ohs, align=align, spacing=audio_spacing, font_scale=2.5
     )
 
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -540,6 +557,7 @@ def main():
     parser.add_argument("--frame_csv", type=str, default=str(Analysis.FRAME_LEVEL_INTERACTIONS_CSV), help="Path to frame_level_social_interactions.csv.")
     parser.add_argument("--segments_csv", type=str, default=str(Analysis.INTERACTION_SEGMENTS_CSV), help="Path to interaction_segments.csv.")
     parser.add_argument("--output_dir", type=str, default=str(Analysis.FINAL_OUTPUT_FOLDER / "multimodal_state_examples"), help="Target output folder.")
+    parser.add_argument("--align", type=str, choices=["left", "right"], default="right", help="Horizontal alignment of HUD cards and badges ('right' by default, or 'left').")
     args = parser.parse_args()
 
     logging.info(f"Loading frame interactions from: {args.frame_csv}")
@@ -565,11 +583,11 @@ def main():
             + list(input_p.glob("*.PNG"))
         )
         for img in imgs:
-            row_info = process_image(img, output_p, frames_df, segments_df, face_model, person_model)
+            row_info = process_image(img, output_p, frames_df, segments_df, face_model, person_model, args.align)
             if row_info:
                 extracted_records.append(row_info)
     else:
-        row_info = process_image(input_p, output_p, frames_df, segments_df, face_model, person_model)
+        row_info = process_image(input_p, output_p, frames_df, segments_df, face_model, person_model, args.align)
         if row_info:
             extracted_records.append(row_info)
 

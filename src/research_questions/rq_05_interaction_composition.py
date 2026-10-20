@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from constants import Analysis
 from config import DataConfig
-from src.heuristics.utils import get_child_fold_boundaries, extract_child_id
+from utils import get_child_fold_boundaries, extract_child_id
 
 def add_interaction_columns(frames_df: pd.DataFrame, 
                             segments_df: pd.DataFrame, 

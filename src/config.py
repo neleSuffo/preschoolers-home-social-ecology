@@ -215,29 +215,53 @@ class AnalysisConfig:
     NUM_FOLDS = 5
     EXCLUSION_SECONDS = 30           
     SAMPLE_RATE = 10                 
+
     
     TERTIARY_PARAMETERS = {
         "SOCIAL_STATE_MAPPING": {1: 'Interacting', 2: 'Available', 3: 'Alone'},
         "GAP_DEFAULT_LABEL": "Alone",
-        "AUDIO_VISUAL_GATING_FLOOR": 0.2,
-        "INSTANT_CONFIDENCE_THRESHOLD": 0.2,
-        "MAX_TURN_TAKING_GAP_SEC": 11.0,
-        "MAX_SAME_SPEAKER_GAP_SEC": 0.8,
-        "PROXIMITY_THRESHOLD": 0.6,
-        "SUSTAINED_KCDS_WINDOW_SEC": 6.0,
-        "SUSTAINED_KCDS_THRESHOLD": 0.95,
-        "HIGH_CONFIDENCE_PROXIMITY_THRESHOLD": 0.75,
+        "MAX_TURN_TAKING_GAP_SEC": 5.0,
+        "MAX_SAME_SPEAKER_GAP_SEC": 1.0,
+        "AUDIO_VISUAL_GATING_FLOOR": 0.35,
+        "PRESENCE_SCORE_FRAMES_PER_SEC": 3,
+        "INSTANT_CONFIDENCE_THRESHOLD": 0.15,
+        "PROXIMITY_THRESHOLD": 0.60,
+        "HIGH_CONFIDENCE_PROXIMITY_THRESHOLD": 0.65,
         "HIGH_CONFIDENCE_FACE_CONFIDENCE": 0.85,
-        "VISUAL_PERSISTENCE_SEC": 1.5,
+        "SUSTAINED_KCDS_WINDOW_SEC": 10.0,
+        "SUSTAINED_KCDS_THRESHOLD": 0.95,
+        "SUSTAINED_OHS_WINDOW_SEC": 10.0,
+        "SUSTAINED_OHS_THRESHOLD": 0.65,
+        "VISUAL_PERSISTENCE_SEC": 3.0,
         "SHORT_TERM_VISUAL_MEMORY_SEC": 3.5,
-        "MIN_PRESENCE_OHS_FRACTION": 0.02,
-        "CPD_PENALTY": 4.5,
-        "CPD_INTERACTING_THRESHOLD": 0.8,
-        "CPD_INTERACTING_THRESHOLD_LOW": 0.3,
-        "CPD_TOTAL_PRESENCE_FLOOR": 0.4,
-        "SAME_SEGMENT_MERGE_THRESHOLD": 2.5,
+        "CPD_PENALTY": 5.0,
+        "CPD_INTERACTING_THRESHOLD": 0.40,
+        "CPD_TOTAL_PRESENCE_FLOOR": 0.45,
+        "SAME_SEGMENT_MERGE_THRESHOLD": 3.0,
         "GAP_STRETCH_THRESHOLD": 2.0
     }
+    # TERTIARY_PARAMETERS = {
+    #     "SOCIAL_STATE_MAPPING": {1: 'Interacting', 2: 'Available', 3: 'Alone'},
+    #     "GAP_DEFAULT_LABEL": "Alone",
+    #     "MAX_TURN_TAKING_GAP_SEC": 5.0,
+    #     "MAX_SAME_SPEAKER_GAP_SEC": 1.0,
+    #     "AUDIO_VISUAL_GATING_FLOOR": 0.35,
+    #     "INSTANT_CONFIDENCE_THRESHOLD": 0.15,
+    #     "PROXIMITY_THRESHOLD": 0.6,
+    #     "HIGH_CONFIDENCE_PROXIMITY_THRESHOLD": 0.65,
+    #     "HIGH_CONFIDENCE_FACE_CONFIDENCE": 0.85,
+    #     "SUSTAINED_KCDS_WINDOW_SEC": 8.0,
+    #     "SUSTAINED_KCDS_THRESHOLD": 0.95,
+    #     "SUSTAINED_OHS_WINDOW_SEC": 10.0,
+    #     "SUSTAINED_OHS_THRESHOLD": 0.6,
+    #     "VISUAL_PERSISTENCE_SEC": 2.5,
+    #     "SHORT_TERM_VISUAL_MEMORY_SEC": 3.5,
+    #     "CPD_PENALTY": 5.0,
+    #     "CPD_INTERACTING_THRESHOLD": 0.4,
+    #     "CPD_TOTAL_PRESENCE_FLOOR": 0.45,
+    #     "SAME_SEGMENT_MERGE_THRESHOLD": 3.0,
+    #     "GAP_STRETCH_THRESHOLD": 2.5
+    #     }
     
     # Define the "Binary Specials"
     BINARY_PARAMETERS = {
@@ -254,10 +278,8 @@ class AnalysisConfig:
         "HIGH_CONFIDENCE_FACE_CONFIDENCE": 0.8,
         "VISUAL_PERSISTENCE_SEC": 1.0,
         "SHORT_TERM_VISUAL_MEMORY_SEC": 2.5,
-        "MIN_PRESENCE_OHS_FRACTION": 0.1,
         "CPD_PENALTY": 3.0,
         "CPD_INTERACTING_THRESHOLD": 0.95,
-        "CPD_INTERACTING_THRESHOLD_LOW": 0.35,
         "CPD_TOTAL_PRESENCE_FLOOR": 0.3,
         "SAME_SEGMENT_MERGE_THRESHOLD": 1.5,
         "GAP_STRETCH_THRESHOLD": 1.5
@@ -276,43 +298,70 @@ class HyperparameterConfig:
     Includes all 15 active parameters from the frame-level and video-level engines.
     """
     HYPERPARAMETER_RANGES = {
-    # --- 1. Audio-Visual Gating & Confidence ---
-    # Setup A used 0.40, Setup B used 0.55. Your current grid is too low.
-    'AUDIO_VISUAL_GATING_FLOOR': [0.35, 0.45, 0.55], 
-    # Setup A used 0.6, Setup B used 0.3. Let's bracket that range.
-    'INSTANT_CONFIDENCE_THRESHOLD': [0.30, 0.45, 0.60], 
-    
-    # --- 2. Turn-Taking (Rule 1) ---
-    # Setup B liked 9s, Setup A liked 7s. Your current grid goes up to 14s (too high).
-    'MAX_TURN_TAKING_GAP_SEC': [6.0, 7.5, 9.0], 
-    # Both setups used 2.0s. Your grid was stuck at 1.0s.
-    'MAX_SAME_SPEAKER_GAP_SEC': [1.5, 2.0, 2.5], 
-    
-    # --- 3. Proximity (Rule 2) ---
-    # Both setups used 0.7-0.75. Your grid was too low (0.55).
-    'PROXIMITY_THRESHOLD': [0.65, 0.70, 0.75], 
-    
-    # --- 4. Sustained Adult Speech (Rule 3) ---
-    # Both setups used 15s. Your grid was too short (8s).
-    'SUSTAINED_KCDS_WINDOW_SEC': [12.0, 15.0, 18.0], 
-    'SUSTAINED_KCDS_THRESHOLD': [0.90, 0.95, 0.98], 
-    
-    # --- 5. Visual Persistence & OHS (Rule 4) ---
-    # Wide disagreement here (0.5 vs 0.9). We need a broad search.
-    'HIGH_CONFIDENCE_PROXIMITY_THRESHOLD': [0.50, 0.70, 0.90], 
-    'HIGH_CONFIDENCE_FACE_CONFIDENCE': [0.70, 0.80, 0.90], 
-    'VISUAL_PERSISTENCE_SEC': [1.0, 1.5, 2.0], 
-    # Both liked shorter memory (1.5-2.0s). Your grid was too long (3.5s).
-    'SHORT_TERM_VISUAL_MEMORY_SEC': [1.5, 2.0, 2.5], 
-    'MIN_PRESENCE_OHS_FRACTION': [0.02, 0.05, 0.10], 
+    # --- 1. Target Turn-Taking & Speaker Gaps ---
+    "MAX_TURN_TAKING_GAP_SEC": [5.0],            # Literature baseline; unanimous consensus
+    "MAX_SAME_SPEAKER_GAP_SEC": [1.0],      # Both values represented equally in top setups
 
-    # --- 6. Change Point Detection (CPD) ---
-    'CPD_PENALTY': [2.5, 3.0, 3.5], 
-    'CPD_INTERACTING_THRESHOLD': [0.75, 0.85, 0.95], 
-    'CPD_INTERACTING_THRESHOLD_LOW': [0.30, 0.35, 0.40], 
-    'CPD_TOTAL_PRESENCE_FLOOR': [0.30, 0.40, 0.50], 
+    # --- 2. Audio-Visual Gating & Visual Confidence ---
+    "AUDIO_VISUAL_GATING_FLOOR": [0.35, 0.1, 0.2, 0.3], # Retain: top setups spanned 0.30 to 0.45
+    "PRESENCE_SCORE_FRAMES_PER_SEC": [3, 6, 9],
+    "INSTANT_CONFIDENCE_THRESHOLD": [0.15],          # Pin: 0.15 swept 100% of top setups
+
+    # --- 3. Physical Proximity & Face Anchors ---
+    "PROXIMITY_THRESHOLD": [0.60],       # Evenly distributed across 0.60, 0.65, 0.70
+    "HIGH_CONFIDENCE_PROXIMITY_THRESHOLD": [0.65],
+    "HIGH_CONFIDENCE_FACE_CONFIDENCE": [0.85], # Split 50/50 between 0.85 and 0.90
+
+    # --- 4. Speech Stream Gating (KCDS & OHS) ---
+    "SUSTAINED_KCDS_WINDOW_SEC": [10.0],   # Spanned all three values
+    "SUSTAINED_KCDS_THRESHOLD": [0.95],        # Drop 0.98; focus on the two active modes
+    "SUSTAINED_OHS_WINDOW_SEC": [10.0],   # Spanned 8.0 to 12.0
+    "SUSTAINED_OHS_THRESHOLD": [0.65],
+
+    # --- 5. Visual Persistence & Short-Term Memory ---
+    "VISUAL_PERSISTENCE_SEC": [3.0],       # Perfectly distributed (2.0, 2.5, 3.0)
+    "SHORT_TERM_VISUAL_MEMORY_SEC": [3.5],      # 3.5 was unanimous floor/ceiling; test 3.5 & test upward to 4.0
+
+    # --- 6. PELT Change-Point Detection & State Assignment ---
+    "CPD_PENALTY": [5.0],                       # Drop 4.5 and 6.0 (100% of top setups picked 5.0 or 5.5)
+    "CPD_INTERACTING_THRESHOLD": [0.40],             # Pin: 0.40 dominated 3 out of 4 top setups
+    "CPD_TOTAL_PRESENCE_FLOOR": [0.45],        # Drop 0.55 (no top setups used it)
+
+    # --- 7. Temporal Smoothing & Post-Processing ---
+    "SAME_SEGMENT_MERGE_THRESHOLD": [3.0], # Top setups were 3.0, 3.5, and 4.0
+    "GAP_STRETCH_THRESHOLD": [2.0]         # Shift downward: 2.0 was ceiling/floor in 3/4 setups
+    }
     
-    # --- 7. Timeline Post-Processing ---
-    'SAME_SEGMENT_MERGE_THRESHOLD': [1.5, 2.0, 2.5],  
-    'GAP_STRETCH_THRESHOLD': [1.5, 2.0, 2.5], 
-}
+    # HYPERPARAMETER_RANGES = {
+    #     # --- 1. Target Turn-Taking & Speaker Gaps ---
+    #     "MAX_TURN_TAKING_GAP_SEC": [5.0],            # Literature baseline; unanimous consensus
+    #     "MAX_SAME_SPEAKER_GAP_SEC": [0.8, 1.0],      # Both values represented equally in top setups
+    
+    #     # --- 2. Audio-Visual Gating & Visual Confidence ---
+    #     "AUDIO_VISUAL_GATING_FLOOR": [0.30, 0.35, 0.45], # Retain: top setups spanned 0.30 to 0.45
+    #     "INSTANT_CONFIDENCE_THRESHOLD": [0.15],          # Pin: 0.15 swept 100% of top setups
+    
+    #     # --- 3. Physical Proximity & Face Anchors ---
+    #     "PROXIMITY_THRESHOLD": [0.60, 0.65, 0.70],       # Evenly distributed across 0.60, 0.65, 0.70
+    #     "HIGH_CONFIDENCE_PROXIMITY_THRESHOLD": [0.65, 0.70, 0.75],
+    #     "HIGH_CONFIDENCE_FACE_CONFIDENCE": [0.85, 0.90], # Split 50/50 between 0.85 and 0.90
+    
+    #     # --- 4. Speech Stream Gating (KCDS & OHS) ---
+    #     "SUSTAINED_KCDS_WINDOW_SEC": [6.0, 8.0, 10.0],   # Spanned all three values
+    #     "SUSTAINED_KCDS_THRESHOLD": [0.95, 1.00],        # Drop 0.98; focus on the two active modes
+    #     "SUSTAINED_OHS_WINDOW_SEC": [8.0, 10.0, 12.0],   # Spanned 8.0 to 12.0
+    #     "SUSTAINED_OHS_THRESHOLD": [0.60, 0.65],
+    
+    #     # --- 5. Visual Persistence & Short-Term Memory ---
+    #     "VISUAL_PERSISTENCE_SEC": [2.0, 2.5, 3.0],       # Perfectly distributed (2.0, 2.5, 3.0)
+    #     "SHORT_TERM_VISUAL_MEMORY_SEC": [3.5, 4.0],      # 3.5 was unanimous floor/ceiling; test 3.5 & test upward to 4.0
+    
+    #     # --- 6. PELT Change-Point Detection & State Assignment ---
+    #     "CPD_PENALTY": [5.0, 5.5],                       # Drop 4.5 and 6.0 (100% of top setups picked 5.0 or 5.5)
+    #     "CPD_INTERACTING_THRESHOLD": [0.40],             # Pin: 0.40 dominated 3 out of 4 top setups
+    #     "CPD_TOTAL_PRESENCE_FLOOR": [0.45, 0.50],        # Drop 0.55 (no top setups used it)
+    
+    #     # --- 7. Temporal Smoothing & Post-Processing ---
+    #     "SAME_SEGMENT_MERGE_THRESHOLD": [3.0, 3.5, 4.0], # Top setups were 3.0, 3.5, and 4.0
+    #     "GAP_STRETCH_THRESHOLD": [1.5, 2.0, 2.5]         # Shift downward: 2.0 was ceiling/floor in 3/4 setups
+    # }

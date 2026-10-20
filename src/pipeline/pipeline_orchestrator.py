@@ -7,7 +7,7 @@ from datetime import datetime
 from tune_hyperparameters import generate_hyperparameter_combinations, run_analysis_with_config, evaluate_combination
 from constants import Analysis
 from config import AnalysisConfig
-from utils import extract_child_id
+from reserach_questions.utils import extract_child_id
 
 def get_folds():
     """

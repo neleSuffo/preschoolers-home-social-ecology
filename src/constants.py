@@ -24,7 +24,7 @@ class DataPaths:
     CHILDLENS_PROCESSED_VIDEOS_LOG = Path(BasePaths.DATA_DIR/"childlens_processed_videos.txt")
     SUBJECTS_CSV_PATH = Path(BasePaths.DATA_DIR/"age_group.csv")
     INFERENCE_DIR = Path(BasePaths.OUTPUT_DIR/"quantex_inference/")
-    INFERENCE_DB_PATH = Path(INFERENCE_DIR/"inference.db")
+    INFERENCE_DB_PATH = Path(INFERENCE_DIR/"inference_first_submission.db")
 
 class AudioClassification:
     OUTPUT_DIR = Path(BasePaths.OUTPUT_DIR/"audio_classification")
@@ -116,7 +116,7 @@ class Analysis:
     PERFORMANCE_RESULTS_TXT = Path("performance_results.txt")
     RULE_ABLATION_SUMMARY_CSV = BASE_OUTPUT_DIR / "rule_ablation_summary.csv"
     RULE_ABLATION_PLOT = BASE_OUTPUT_DIR/ "rule_ablation_plot.png"
-    GROUND_TRUTH_SEGMENTS_CSV = BASE_OUTPUT_DIR / "01_interaction_segments_gt.csv"
+    GROUND_TRUTH_SEGMENTS_CSV = BASE_OUTPUT_DIR / "interaction_segments_final_gt.csv"
     GT_1_FILE_PATH = BASE_OUTPUT_DIR / "interaction_segments_clara.csv"
     GT_2_FILE_PATH = BASE_OUTPUT_DIR / "interaction_segments_lotta.csv"
     GT_1_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "gt_ann1_secondwise.csv"
@@ -125,15 +125,15 @@ class Analysis:
     
     # -- Dynamic Folder Logic --
     # 1. Define the default fallback
-    DEFAULT_RUN_NAME = "analysis_20260410_202054_tertiary_final"
+    DEFAULT_RUN_NAME = "analysis_20261018_221629_tertiary_final_second_submission"
     # 2. Look for the environment variable 'RUN_FOLDER_NAME'
     # os.getenv returns the string from the system, or the default if not found
     active_run_name = os.getenv("RUN_FOLDER_NAME", DEFAULT_RUN_NAME)
     # 3. Build the folder path
     FINAL_OUTPUT_FOLDER = BASE_OUTPUT_DIR / active_run_name
     
-    FRAME_ANALYSIS_SCRIPT = Path("heuristics/pipeline_frame_level_analysis.py")
-    SEGMENT_CREATION_SCRIPT = Path("heuristics/pipeline_video_level_analysis.py")
+    FRAME_ANALYSIS_SCRIPT = Path("pipeline/frame_level_rules.py")
+    SEGMENT_CREATION_SCRIPT = Path("heuristics/segment_aggregation.py")
     FRAME_LEVEL_INTERACTIONS_CSV = Path(FINAL_OUTPUT_FOLDER/"frame_level_social_interactions.csv")
     INTERACTION_SEGMENTS_CSV = Path(FINAL_OUTPUT_FOLDER/"interaction_segments.csv")
     #UTTERANCE_SEGMENTS_CSV = FINAL_OUTPUT_FOLDER / "00_utterance_segments.csv"
@@ -144,11 +144,14 @@ class Analysis:
     TURN_TAKING_CSV = FINAL_OUTPUT_FOLDER / "04_turn_taking_summary.csv"
     GLOBAL_TURN_TAKING_CSV = FINAL_OUTPUT_FOLDER / "04a_global_turn_taking_summary.csv"
     TURN_DURATION_CSV = FINAL_OUTPUT_FOLDER / "04b_turn_durations_summary.csv"
+    TURN_GAPS_CSV = FINAL_OUTPUT_FOLDER / "04c_turn_gaps_summary.csv"
     INTERACTION_COMPOSITION_CSV = FINAL_OUTPUT_FOLDER / "05_interaction_composition.csv"
     TEMP_CUT_FACE_DIR = BASE_OUTPUT_DIR / "temp_cut_faces"
     
 class Visualization:
-    FACE_HEATMAP_PATH = Analysis.FINAL_OUTPUT_FOLDER / "face_heatmaps_per_state.png"
     HEATMAP_SUBFOLDER = "heatmaps"
+    FACE_HEATMAP_PATH = Analysis.FINAL_OUTPUT_FOLDER / "face_heatmaps_per_state.png"
     FULL_MATCHED_FACES_DETECTIONS = Analysis.FINAL_OUTPUT_FOLDER / HEATMAP_SUBFOLDER / "full_matched_faces_detections.csv"
     GT_MATCHED_FACES_DETECTIONS = Analysis.FINAL_OUTPUT_FOLDER / HEATMAP_SUBFOLDER / "gt_matched_faces_detections.csv"
+    
+    SEGMENT_TIMELINE_SUBOLDER = Analysis.FINAL_OUTPUT_FOLDER / "segment_timeline_plots"

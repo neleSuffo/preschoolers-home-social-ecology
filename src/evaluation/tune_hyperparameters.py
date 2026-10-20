@@ -24,9 +24,9 @@ sys.path.append(str(src_path))
 
 from constants import DataPaths, Analysis, Inference
 from config import AnalysisConfig, HyperparameterConfig
-from heuristics.validation.eval_segment_performance import run_evaluation
-from heuristics.pipeline_frame_level_analysis import main as frame_analysis_main
-from heuristics.pipeline_video_level_analysis import main as segment_analysis_main
+from eval_segment_performance import run_evaluation
+from pipeline.frame_level_rules import main as frame_analysis_main
+from heuristics.segment_aggregation import main as segment_analysis_main
 
 
 def generate_hyperparameter_combinations(max_combinations=20, 

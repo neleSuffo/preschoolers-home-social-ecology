@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Tuple
 from constants import Analysis
 from config import AnalysisConfig
-from src.heuristics.utils import parse_rttm, get_child_fold_boundaries
+from src.research_questions.utils import parse_rttm, get_child_fold_boundaries
 
 # Configure logging to show thresholds in the terminal
 logging.basicConfig(level=logging.INFO, format='%(message)s')

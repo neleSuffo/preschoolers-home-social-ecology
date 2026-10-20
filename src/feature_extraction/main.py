@@ -2,8 +2,8 @@ import logging
 import argparse
 import run_face_proximity
 import populate_speech_db as run_speech_type
-import run_person
-import run_book
+import run_person_detection
+import run_book_detection
 from pathlib import Path
 from setup_inference_db import main as setup_inference_db
 from constants import DataPaths, Inference, Analysis

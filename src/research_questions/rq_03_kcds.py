@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from constants import Analysis
-from src.heuristics.utils import parse_rttm, merge_overlapping_intervals, get_child_fold_boundaries
+from utils import parse_rttm, merge_overlapping_intervals, get_child_fold_boundaries
 
 def main(
     output_folder: Path = None,
