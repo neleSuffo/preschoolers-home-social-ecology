@@ -676,6 +676,8 @@ dmypy.json
 *.safetensors
 *.pt
 *.pth
+*.db
+*.ckpt
 #models/
 checkpoints/
 *.mp4

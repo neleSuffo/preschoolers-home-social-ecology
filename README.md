@@ -79,7 +79,6 @@ We present a fully automated pipeline designed to bridge the "measurement gap" i
 │       ├── plot_multimodal_social_state_frames.py # Exemplar consecutive sequences
 │       └── plot_segments_timeline.py # GT vs. predicted timeline bar plots
 │
-├── weights/                          # Model checkpoints
 ├── .gitignore
 ├── poetry.toml                       # Poetry local settings
 ├── pyproject.toml                    # Poetry dependencies & project configuration
