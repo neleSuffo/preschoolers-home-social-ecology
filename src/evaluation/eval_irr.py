@@ -9,8 +9,13 @@ from sklearn.metrics import cohen_kappa_score
 src_path = Path(__file__).parent.parent.parent if '__file__' in globals() else Path.cwd().parent.parent
 sys.path.append(str(src_path))
 
+<<<<<<< Updated upstream
 from research_questions.utils import time_to_seconds, create_second_level_labels
 from constants import Evaluation
+=======
+from src.research_questions.utils import time_to_seconds, create_second_level_labels
+from src.constants import Evaluation
+>>>>>>> Stashed changes
 
 # Define a placeholder for unannotated time, which is treated as a category
 UNANNOTATED_LABEL = 'unannotated'

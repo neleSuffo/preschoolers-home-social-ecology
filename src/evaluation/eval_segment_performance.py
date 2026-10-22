@@ -13,9 +13,15 @@ from sklearn.metrics import cohen_kappa_score
 src_path = Path(__file__).parent.parent.parent if '__file__' in globals() else Path.cwd().parent.parent
 sys.path.append(str(src_path))
 
+<<<<<<< Updated upstream
 from constants import Analysis, Inference
 from config import AnalysisConfig
 from research_questions.utils import time_to_seconds, create_second_level_labels
+=======
+from src.constants import Analysis, Inference
+from src.config import AnalysisConfig
+from src.research_questions.utils import time_to_seconds, create_second_level_labels
+>>>>>>> Stashed changes
 
 # Define a label for unclassified/unannotated time for saving purposes
 UNCLASSIFIED_LABEL = 'unclassified'

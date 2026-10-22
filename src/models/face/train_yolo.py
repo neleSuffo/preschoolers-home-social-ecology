@@ -4,8 +4,8 @@ import shutil
 import argparse
 from datetime import datetime
 from ultralytics import YOLO
-from constants import FaceDetection
-from config import FaceConfig
+from src.constants import FaceDetection
+from src.config import FaceConfig
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train YOLO model for different detection tasks')

@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import Set, List, Tuple
 from tqdm import tqdm
 import cv2
-from constants import DataPaths
-from config import DataConfig
+from src.constants import DataPaths
+from src.config import DataConfig
 
 # Configure logging globally
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

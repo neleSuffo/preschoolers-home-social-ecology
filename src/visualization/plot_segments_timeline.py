@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-from constants import Analysis, Visualization
+from src.constants import Analysis, Visualization
 
 def load_and_clean_segments(df: pd.DataFrame, video_name: str, mode: str) -> pd.DataFrame:
     """Filters data for the target video and standardizes interaction labels."""

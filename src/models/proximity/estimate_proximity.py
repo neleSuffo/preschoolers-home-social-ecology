@@ -1,6 +1,6 @@
 import logging
 import numpy as np
-from constants import Proximity as ProximityConstants
+from src.constants import Proximity as ProximityConstants
 
 class Proximity:
     def __init__(self):

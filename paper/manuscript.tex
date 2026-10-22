@@ -1,0 +1,970 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+  english,
+  12pt,
+  man,floatsintext]{apa6}
+\usepackage{xcolor}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+% Make \paragraph and \subparagraph free-standing
+\makeatletter
+\ifx\paragraph\undefined\else
+  \let\oldparagraph\paragraph
+  \renewcommand{\paragraph}{
+    \@ifstar
+      \xxxParagraphStar
+      \xxxParagraphNoStar
+  }
+  \newcommand{\xxxParagraphStar}[1]{\oldparagraph*{#1}\mbox{}}
+  \newcommand{\xxxParagraphNoStar}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+  \let\oldsubparagraph\subparagraph
+  \renewcommand{\subparagraph}{
+    \@ifstar
+      \xxxSubParagraphStar
+      \xxxSubParagraphNoStar
+  }
+  \newcommand{\xxxSubParagraphStar}[1]{\oldsubparagraph*{#1}\mbox{}}
+  \newcommand{\xxxSubParagraphNoStar}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+\makeatother
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+% definitions for citeproc citations
+\NewDocumentCommand\citeproctext{}{}
+\NewDocumentCommand\citeproc{mm}{%
+  \begingroup\def\citeproctext{#2}\cite{#1}\endgroup}
+\makeatletter
+ % allow citations to break across lines
+ \let\@cite@ofmt\@firstofone
+ % avoid brackets around text for \cite:
+ \def\@biblabel#1{}
+ \def\@cite#1#2{{#1\if@tempswa , #2\fi}}
+\makeatother
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newenvironment{CSLReferences}[2] % #1 hanging-indent, #2 entry-spacing
+ {\begin{list}{}{%
+  \setlength{\itemindent}{0pt}
+  \setlength{\leftmargin}{0pt}
+  \setlength{\parsep}{0pt}
+  % turn on hanging indent if param 1 is 1
+  \ifodd #1
+   \setlength{\leftmargin}{\cslhangindent}
+   \setlength{\itemindent}{-1\cslhangindent}
+  \fi
+  % set entry spacing
+  \setlength{\itemsep}{#2\baselineskip}}}
+ {\end{list}}
+\usepackage{calc}
+\newcommand{\CSLBlock}[1]{\hfill\break\parbox[t]{\linewidth}{\strut\ignorespaces#1\strut}}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{\strut#1\strut}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{\strut#1\strut}}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
+\ifLuaTeX
+\usepackage[bidi=basic,shorthands=off]{babel}
+\else
+\usepackage[bidi=default,shorthands=off]{babel}
+\fi
+\ifLuaTeX
+  \usepackage{selnolig} % disable illegal ligatures
+\fi
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+% Manuscript styling
+\usepackage{upgreek}
+\captionsetup{font=singlespacing,justification=justified}
+
+% Table formatting
+\usepackage{longtable}
+\usepackage{lscape}
+% \usepackage[counterclockwise]{rotating}   % Landscape page setup for large tables
+\usepackage{multirow}		% Table styling
+\usepackage{tabularx}		% Control Column width
+\usepackage[flushleft]{threeparttable}	% Allows for three part tables with a specified notes section
+\usepackage{threeparttablex}            % Lets threeparttable work with longtable
+
+% Create new environments so endfloat can handle them
+% \newenvironment{ltable}
+%   {\begin{landscape}\centering\begin{threeparttable}}
+%   {\end{threeparttable}\end{landscape}}
+\newenvironment{lltable}{\begin{landscape}\centering\begin{ThreePartTable}}{\end{ThreePartTable}\end{landscape}}
+
+% Enables adjusting longtable caption width to table width
+% Solution found at http://golatex.de/longtable-mit-caption-so-breit-wie-die-tabelle-t15767.html
+\makeatletter
+\newcommand\LastLTentrywidth{1em}
+\newlength\longtablewidth
+\setlength{\longtablewidth}{1in}
+\newcommand{\getlongtablewidth}{\begingroup \ifcsname LT@\roman{LT@tables}\endcsname \global\longtablewidth=0pt \renewcommand{\LT@entry}[2]{\global\advance\longtablewidth by ##2\relax\gdef\LastLTentrywidth{##2}}\@nameuse{LT@\roman{LT@tables}} \fi \endgroup}
+
+% \setlength{\parindent}{0.5in}
+% \setlength{\parskip}{0pt plus 0pt minus 0pt}
+
+% Overwrite redefinition of paragraph and subparagraph by the default LaTeX template
+% See https://github.com/crsh/papaja/issues/292
+\makeatletter
+\renewcommand{\paragraph}{\@startsection{paragraph}{4}{\parindent}%
+  {0\baselineskip \@plus 0.2ex \@minus 0.2ex}%
+  {-1em}%
+  {\normalfont\normalsize\bfseries\itshape\typesectitle}}
+
+\renewcommand{\subparagraph}[1]{\@startsection{subparagraph}{5}{1em}%
+  {0\baselineskip \@plus 0.2ex \@minus 0.2ex}%
+  {-\z@\relax}%
+  {\normalfont\normalsize\itshape\hspace{\parindent}{#1}\textit{\addperi}}{\relax}}
+\makeatother
+
+\makeatletter
+\usepackage{etoolbox}
+\patchcmd{\maketitle}
+  {\section{\normalfont\normalsize\abstractname}}
+  {\section*{\normalfont\normalsize\abstractname}}
+  {}{\typeout{Failed to patch abstract.}}
+\patchcmd{\maketitle}
+  {\section{\protect\normalfont{\@title}}}
+  {\section*{\protect\normalfont{\@title}}}
+  {}{\typeout{Failed to patch title.}}
+\makeatother
+
+\usepackage{xpatch}
+\makeatletter
+\xapptocmd\appendix
+  {\xapptocmd\section
+    {\addcontentsline{toc}{section}{\appendixname\ifoneappendix\else~\theappendix\fi: #1}}
+    {}{\InnerPatchFailed}%
+  }
+{}{\PatchFailed}
+\makeatother
+\usepackage{lineno}
+
+\linenumbers
+\usepackage{csquotes}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+% fallback for those not using the hyperref driver hyperxmp:
+\makeatletter
+\@ifundefined{xmpquote}{\newcommand{\xmpquote}[1]{#1}}{}
+\makeatother
+\hypersetup{
+  pdftitle={The social ecology of development: The changing structure of preschoolers' everyday experiences at home},
+  pdfauthor={Nele-Pauline Suffo1, Anas Suffo1, Pierre-Etienne Martin2, Yujin Kim2, Anam Zahra2, Daniel Haun2, \& Manuel Bohn1,2},
+  pdflang={en-EN},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{The social ecology of development: The changing structure of preschoolers' everyday experiences at home}
+\author{Nele-Pauline Suffo\textsuperscript{1}, Anas Suffo\textsuperscript{1}, Pierre-Etienne Martin\textsuperscript{2}, Yujin Kim\textsuperscript{2}, Anam Zahra\textsuperscript{2}, Daniel Haun\textsuperscript{2}, \& Manuel Bohn\textsuperscript{1,2}}
+\date{}
+
+
+\shorttitle{The social ecology of development}
+
+\authornote{
+
+\textbf{Competing Interest Statement:} The authors have no competing interests to declare that are relevant to the content of this article.
+
+\textbf{Keywords}: Social Interaction, Child development, Language, Naturalistic Observation
+
+The authors made the following contributions. Nele-Pauline Suffo: Conceptualization, Methodology, Software, Formal Analysis, Writing - Original Draft, Writing - Review \& Editing, Visualization; Anas Suffo: Methodology, Software, Formal Analysis, Writing -- Review \& Editing; Pierre-Etienne Martin: Conceptualization, Data Curation, Writing -- Review \& Editing; Yujin Kim: Data Curation, Writing - Review \& Editing; Anam Zahra: Conceptualization, Data Curation; Daniel Haun: Conceptualization, Writing - Review \& Editing, Funding Acquisition; Manuel Bohn: Conceptualization, Writing - Review \& Editing, Supervision, Funding Acquisition.
+
+Correspondence concerning this article should be addressed to Nele-Pauline Suffo, Universitätsallee 1, 21335 Lüneburg. E-mail: \href{mailto:nele.suffo@leuphana.de}{\nolinkurl{nele.suffo@leuphana.de}}
+
+}
+
+\affiliation{\vspace{0.5cm}\textsuperscript{1} Institute of Psychology in Education, Leuphana University Lüneburg, Universitätsallee 1, 21335 Lüneburg, Germany\\\textsuperscript{2} Comparative Cultural Psychology, Max Planck Institute for Evolutionary Anthropology, Deutscher Platz 6, Leipzig, 04103, Germany}
+
+\begin{document}
+\maketitle
+
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+\section{Abstract}\label{abstract}
+
+Everyday social interactions shape human psychological development. Research, however, has primarily relied on controlled settings or brief observations; consequently, the nature of naturalistic everyday experiences remains largely unstudied. To address this gap, we developed an automated multimodal processing pipeline to analyze a large egocentric corpus of naturalistic everyday experiences in the home environment from 107 children aged three to five years in Germany (265.72 hours). The pipeline detects faces, persons, proximity, and speech types to classify time into Interacting, Available, or Alone states. Results indicate an age-related shift in the distribution of these home contexts: social interaction occupies the largest share of home time at age three and declines towards a more balanced distribution across states by the sixth birthday. In contrast, conversational turn dynamics and agency remain stable throughout the preschool years, with children sharing it nearly equally with conversational partners. Importantly, isolated social cues become significantly less specific for interaction across development, which requires older children to integrate multimodal cues to navigate their social surroundings. Thus, our findings show an age-related restructuring of home experiences, where social interaction becomes less frequent and more diverse with development.
+
+\textbf{Keywords}: Social Interaction, Child development, Language, Naturalistic Observation
+
+\section{Introduction}\label{introduction}
+
+Children's everyday experiences play a fundamental role in their cognitive and social development (J. Carpendale \& Lewis, 2020; Heyes, 2018; Piaget, 1964; Rogoff et al., 2018; Smith et al., 2018; Tomasello, 2009; Vygotsky, 1978). Major theoretical frameworks suggest that everyday social interactions are the context in which children develop the social and psychological abilities that allow them to become functioning members of the society they grow up in (Keller, 2021; Laland \& Seed, 2021; Legare, 2019; Tomasello, 2019; Vygotsky, 1978). For example, both language and social cognition are thought to be shaped by children's early social interactions (Bohn \& Casillas, 2026; Heyes, 2018; Kuhl, 2014; Perner, 1993; Tomasello, 2005): children who hear more language and engage more often in conversational turns have better language abilities (Bergelson et al., 2023; Donnelly \& Kidd, 2021; Ferjan Ramírez et al., 2020; Gilkerson et al., 2018; Romeo et al., 2018) and children with siblings or parents who use more mental state language are advanced in their social-cognitive development (Devine \& Hughes, 2018; Ensor \& Hughes, 2008; A. R. McAlister \& Peterson, 2013; Perner et al., 1994; Taumoepeau \& Ruffman, 2008; Tompkins et al., 2018). Taken together, through social interactions, children develop the unique cognitive and cultural abilities that fundamentally ``make them human'' (Tomasello, 2019).
+
+Despite the recognized importance of these experiences, how social interactions are structured in the real world is still largely unknown. The field's historical reliance on controlled laboratory settings has come at a significant cost: while these settings allow for an isolated assessment of specific social experiences, they are unable to capture the complexity and varied dynamics of children's lived experiences (Rogoff et al., 2018). For example, experimental work has shown that children learn words better when object and label are temporally aligned (Pereira et al., 2014; Yu \& Smith, 2007, 2016). However, in the real world, such co-occurrence might be relatively rare (Tan et al., 2025). As a consequence, to assess the feasibility and relative importance of lab-based learning processes, we must understand the ``natural statistics'' of the environment in which development occurs (Bronfenbrenner, 1979; J. I. M. Carpendale \& Lewis, 2004; Rogoff et al., 2018; Weisleder \& Fernald, 2013), which is largely the unconstrained home environment.
+
+To bridge this gap, researchers have applied different sensing technologies. This includes stationary video recordings to investigate specific developmental dynamics, such as conversational patterns during mealtimes (Bohn et al., 2024), or the use of house-wide sensor networks to predict linguistic milestones (Roy et al., 2015). Others have used wearable sensors like sociometers and radio-frequency identification (RFID) tags to quantify proximity, talkativeness, and play contexts in classroom settings (Dai et al., 2022; Onnela et al., 2014). Small audio recorders, for example, allow for a broader look at everyday linguistic input and language development from over 1,000 children from six continents (Bergelson et al., 2023). A relatively recent and more comprehensive approach is the use of egocentric (first-person) audio and video recordings, like the ChildLens (Suffo et al., 2026), SAYCam (Sullivan et al., 2021) or BabyView dataset (Long et al., 2024) . These datasets provide a unique window into different developmental aspects, such as the alignment between infants' visual environments and their linguistic experiences (Tan et al., 2025), as well as the quantification of infants' everyday interactions with physical objects (Sullivan et al., 2021; Yang et al., 2025; Zhuang et al., 2021).
+
+However, the advent of these massive datasets has highlighted the limitations of traditional processing methods. Manual hand-coding of video --- used in detailed studies of peer interaction or family mealtimes (Bohn et al., 2024; Rossano et al., 2022) --- quickly reaches its limit when faced with hundreds of hours of unconstrained egocentric recordings. Consequently, there is a growing shift toward automated pipelines. Modern Machine Learning (ML) frameworks now enable the scalable analysis of these data. Self-supervised models, for instance, are used for speaker segmentation in long-form recordings (Charlot et al., 2025) to study caregiver-child interactions (Weng et al., 2025) or attention-centric models (Tian et al., 2025) are applied to evaluate everyday object occurrences in an infant's visual field (Yang et al., 2025). Previous work has successfully applied convolutional neural networks (Simonyan \& Zisserman, 2014) to extract visual features from a toddler's perspective (Bambach et al., 2018), while more recent frameworks employ vision language models (VLMs) to detect specific environmental aspects, such as screen exposure, from wearable sensors (Li et al., 2026).
+
+Consequently, these computational methods have advanced our understanding of isolated sensory dimensions --- such as physical proximity (Dai et al., 2022; Onnela et al., 2014), speech volume and turn-taking behaviour (Bergelson et al., 2023; Gilkerson et al., 2017), visual object learning (Bambach et al., 2018), or activity recognition (Bambach et al., 2015). However, capturing naturalistic social dynamics from an egocentric perspective requires multimodal integration. Audio stream alone cannot capture the spatial parameters of interaction or physical co-presence, which also depend on physical cues like body orientation and proximity (Mondada, 2016). Similarly, visual data alone cannot fully capture these dynamics, as it cannot distinguish between an adult quietly working nearby and one actively talking with the child (Li et al., 2025). Therefore, visual cues (faces, bodies, proximity) and audio cues (child speech, child-directed speech, overheard talk) must be synchronized to reliably separate active engagement from passive co-presence or solitary time in naturalistic egocentric recordings.
+
+Up until now, existing multimodal approaches to understanding everyday social life have primarily focused on the infant years and toddlerhood (Long et al., 2024; Roy et al., 2015; Sullivan et al., 2021) or have frequently relied on manual annotations of relatively small samples (Rossano et al., 2022; Rowe \& Goldin-Meadow, 2009). Yet, examining the preschool years (ages three to five) is critical because this age range sees fundamental development across several psychological domains. Children show significant improvement in social cognition, for example regarding the development of Theory of Mind and perspective-taking (Wellman et al., 2001). Executive functions are also evolving, including increased inhibitory control and self-regulation (Garon et al., 2008; Montroy et al., 2016). Children's linguistic skills develop in a way that reflects the frequency and structure of their daily social interactions (Hoff, 2006), and their communicative competence improves as they master the timing of conversational turn-taking (Casillas et al., 2016). In terms of pragmatics, children learn to adjust their speech based on a listener's knowledge (Baer \& Friedman, 2018; Fukumura, 2016; Shatz \& Gelman, 1973), as they begin to realize that other people can have different perspectives or incorrect ideas about the world (Wellman et al., 2001; Wimmer, 1983).
+
+Beyond direct dyadic communication, children also begin to create more coherent and comprehensive narratives (Bohnacker et al., 2022; Lindgren, 2022; Peterson \& McCabe, 1983), which is supported by their emerging ability to remember events in a specific time and order (McCormack \& Hoerl, 2020; Perner et al., 2007). Alongside these developments, social learning shifts from observation toward active participation in cultural practices (Gweon, 2021) and children develop emotional competence as they begin to control their outward-directed emotions according to the social context (Denham et al., 2003), a shift made possible by the growing capacity to inhibit immediate impulses in favor of social rules (Zelazo, 2006). Importantly, developmental change in these domains has been repeatedly linked to aspects of social interaction, that is, the frequency and dynamics of how children interact with whom (Bernier et al., 2010; Gilkerson et al., 2017; Kuhl, 2007; A. McAlister \& Peterson, 2007; Pancsofar \& Vernon-Feagans, 2006; Rudasill, 2011; Sameroff, 2009).
+
+This emerging developmental autonomy changes the structure of children's everyday experiences within the home. Whereas three-year-olds require regular adult monitoring to navigate daily tasks, older preschoolers develop the self-sufficiency and attentional focus required for extended periods of independent play (Morrongiello, 2005; Ruff \& Capozzoli, 2003). As a result, a child's social ecology in the home may include fewer direct interactions, which are typically the sole focus when measuring speech volume or turn-taking behavior. Sociological frameworks have long recognized that co-presence without active engagement represents a distinct social context. Goffman (1969) introduced the term ``unfocused interaction'' to describe situations where individuals share the same physical space without engaging in a shared focus of attention or active communication. In the home, children spend part of the time in passive company of others: parents or siblings pursue independent activities while staying physically available in the immediate environment. The developmental relevance of passive availability in the home environment has been highlighted by Ochs and Schieffelin (1984), who show that early language acquisition across cultures frequently relies on speech spoken around - rather than directed to - the child. Similarly, Rogoff et al. (2003) demonstrate that children learn through intent participation, which is characterized by overhearing conversations and observing activities when they are co-present around others.
+
+Simultaneously, increasing autonomy introduces regular periods of solitude into children's everyday home experiences. Solitary time provides essential opportunities for self-directed free play and creative exploration without adult supervision (Ginsburg et al., 2007), as well as a dedicated context for private, self-regulatory speech (Garon et al., 2008; Vygotsky, 1978). To summarize, naturalistic home experiences during the preschool years requires can be divided into three mutually exclusive states: active engagement (\emph{Interacting}), passive co-presence (\emph{Available}), and solitary activity (\emph{Alone}).
+
+Differentiating these three social states requires the multimodal synchronization of specific visual and acoustic cues that have been identified as relevant markers of social experience. Acoustic analyses have long focused on children's vocal production, speech exposure, and conversational turn-taking dynamics (Bergelson et al., 2023; Gilkerson et al., 2017; Romeo et al., 2018). However, to effectively differentiate active interaction from passive co-presence and solitary time, it is crucial to separate child-directed from overheard speech. As emphasized by Ochs and Schieffelin (1984) and Rogoff et al. (2003), overheard speech forms the empirical core of passive co-presence, where children observe or listen to others' activities and conversations. In parallel, visual and spatial cues are essential to determine communicative availability and presence. Physical proximity has been used as a proxy to quantify social interactions (Dai et al., 2022; Onnela et al., 2014), while detecting bodies, hands or faces provides direct evidence of visual attentiveness, joint engagement, or parallel play (Bambach et al., 2015; Jayaraman et al., 2015).
+
+To capture this tripartite social landscape across the preschool years, we examine a dense, multimodal corpus of unscripted egocentric video recordings from 107 children aged three to five years growing up in Germany. The recordings capture 265.72 hours of naturalistic everyday life within their home environment, recorded through a camera worn in a vest at chest height. In Germany, this age range corresponds to the kindergarten years before elementary school, when children typically spend parts of their day in institutional care. To process these naturalistic recordings without relying on manual coding, we developed an automated multimodal processing pipeline. The pipeline synchronizes a vision model (YOLOv12 for detection of faces and bodies, Tian et al., 2025) with formula-based proximity estimation and self-supervised speech diarization (BabyHuBERT for segmenting key child vocalizations, child-directed, and overheard speech, Charlot et al., 2025). The pipeline integrates these visual and acoustic cues using classification rules and a set of cross-validated parameters to classify the egocentric recordings into the three mutually exclusive social states: Interacting (active engagement), Available (passive social presence), and Alone (solitary activity). Within these multimodally classified social states, we quantify language exposure, the child's speech production, the characteristics of conversational turn-taking as well as the rate of child-led initiations of conversations. Furthermore, we perform a cue-specificity analysis to evaluate whether isolated social cues (a visible face or audible speech) reliably coincide with social interaction across age.
+
+The work provides a threefold contribution. First, we introduce and validate an end-to-end, open-source pipeline that combines modular computer vision and acoustic models through rules and configurable parameters to classify children's home social ecology in large egocentric datasets into three distinct social states. This provides researchers with an adaptable tool to apply and adjust the pipeline to new egocentric datasets. Second, we provide dense ``in vivo'' empirical evidence for how children's home social ecology restructures across the preschool years. Beyond theoretical models and brief laboratory observations, our findings document a continuous developmental shift from predominantly active social interaction toward more time spent available or alone. Third, we show that while a child's speech proportion and speech exposure proportion remain remarkably stable within social states across the preschool years, the specificity of isolated social cues decreases significantly with age. For younger preschoolers, seeing a face or hearing speech primarily denotes an active interaction; as children age, the social ecology in the home environment becomes increasingly complex as isolated cues no longer automatically signal an interaction.
+
+\section{Methods}\label{methodology}
+
+To analyze preschoolers' social ecologies in the home environment, we developed an automated multimodal pipeline that classifies naturalistic egocentric recordings into social states. This pipeline addresses three core research aims: first, quantifying age-related shifts in time allocated across active interaction, passive co-presence, and solitary time; second, characterizing the linguistic properties (child speech production, speech exposure, and turn-taking dynamics) maintained within each of these social states across age; and third, investigating how specific isolated social cues are for interaction, and how this specificity develops as children grow.
+
+Achieving these goals across hundreds of hours of naturalistic video required synchronized multimodal classification rather than unimodal tracking. In this section, we first describe the participants and dataset alongside the ground-truth datasets used for validation. We then detail the automated detection modules for visual and acoustic social cues. Following, we describe the hierarchical classification rules and Change Point Detection (PELT) procedures which consolidate frame-level detections into continuous social segments. Finally, we describe the Bayesian statistical analysis framework used to model state-specific dynamics and their developmental trajectories across the preschool years.
+
+\subsection{Participants and Dataset}\label{participants-dataset}
+
+Following ethics approval and parental consent, we recruited a cross-sectional sample of 107 children (55 female, 52 male) from a database of children whose parents agreed to participate in research on child development. Participants were recruited from Leipzig, a mid-sized city in eastern Germany, and German was the dominant language in all video recordings. Demographic information was available for a subset of participants (\(n=\) 101): all participating children were enrolled in kindergarten. Sibling data were available for 104 children; participants had an average of 0.90 siblings (\(SD =\) 0.62, range = 0 -- 2; 25 only children (24.0\%), 64 children with one sibling (61.5\%), and 15 children with two siblings (14.4\%). At the time of their initial recording, children's age ranged from 2.80 to 5.90 years (\(M_{age}=\) 4.45, \(SD=\) 0.84).
+
+Because home recordings were collected over a longer observation period (Median: 8 days, Interquartile range = 3.50--15.50), children's age across all recorded sessions spanned from 2.80 to 6.09 years. Overall, data collection spanned 64 months between 3/2020 and 6/2025 \footnote{Although this window overlapped with the COVID-19 pandemic, data collection occurred almost entirely outside acute lockdown phases (defined by state regulations as periods with mandatory daycare closures and household contact restrictions: March 18 - May 17, 2020, and December 14, 2020 - February 14, 2021). Only a single recording session from one child (28.72 minutes, representing 15.18\% of that child's recording volume and 0.18\% of the total dataset) fell within an acute lockdown period.}.
+
+For ethical and privacy reasons regarding third-party consent, recordings were restricted to the household environment (the family home and private garden/yard). However, recorded social partners were not restricted to the immediate nuclear family; participating families were instructed to inform any external visitors (e.g., relatives, friends) beforehand and obtain their explicit written consent prior to recording. To ensure recorded experiences remained unstructured, parents were given no specific instructions but were asked to spend their day as they would usually do.
+
+The raw dataset comprised 710 video files recorded from 107 children. Following manual quality screening, 16 videos across 7 children were excluded due to stationary placement (\(n=9\)) or initial device testing (\(n=3\)). Because affected children contributed multiple sessions, valid egocentric footage was retained for all 107 children (\(N=\) 107). The final analyzed dataset therefore comprises 694 videos derived from 324 recording sessions, resulting in 265.72 hours of recordings (\(M = 2.48\) hours per child, \(SD = 1.24\), range = 0.17--6.98). Children contributed an average of 3.03 sessions (\(SD=\) 1.60, range = 1--9), with recording sessions lasting an average of 49.21 minutes (\(SD=\) 41.24, range = 1.50--270). Across age groups, the dataset includes 96.18 hours from 39 three-year-olds, 85.20 hours from 35 four-year-olds, and 84.34 hours from 33 five-year-olds.
+
+Recordings spanned all seven days of the week (59.20 \% on weekdays, 40.80\% on weekends) and covered the full waking day: 19.60\% in mornings (07:00--11:59), 16.90\% at midday (12:00--14:29), 25.50\% in afternoons (14:30--17:59), and 38\% in evenings (18:00--21:00). Detailed breakdowns of recording times and days by age group, together with chi-square tests examining differences in temporal sampling distributions across age groups, are provided in Table S1 in the supplementary material under \emph{Temporal Sampling Distribution Across Age Groups}
+
+\subsection{Recording Device}\label{recording}
+
+To capture naturalistic everyday experiences, children wore a lightweight, vest-mounted PatrolEyes WiFi HD Police Body Camera. The camera recorded continuous video at 1080p resolution at 30 frames per second (fps), and with a 140° wide-angle field of view (FOV), which results in a wide horizontal perspective with a narrower vertical FOV given the camera's 16:9 aspect ratio. Long recording sessions were automatically split into smaller 30-minute files. A single recording session was defined as continuous device use from activation to deactivation.
+
+\subsection{Ground-Truth Datasets}\label{annotations}
+
+To develop, tune, and validate the different components of our pipeline, we created three ground-truth datasets from our video corpus (alongside audio labels taken from the ChildLens dataset, Suffo et al., 2026):
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Bounding-Box Ground-Truth Dataset (Frame-Level):} We manually annotated 26.95 hours of data from 26 children at the frame level to fine-tune and validate the YOLOv12 face and person detection models. Given the high temporal redundancy in continuous 30-fps videos and the labor-intensive nature of bounding-box labeling, videos were annotated at 1 frame per second (every 30th frame). Annotators placed bounding boxes around all visible persons and faces, even when they were blurred, partially cropped, or occluded. We additionally recorded individual IDs, perceived gender, and estimated age ranges for every social partner.
+\item
+  \textbf{Face-Proximity Ground-Truth Dataset (Frame-Level):} To validate the face proximity formula across the full spectrum of physical proximity (\(0.0\) to \(1.0\)), two independent annotators rated face proximity on a continuous scale from 0 (distant) to 1 (close-up) for a targeted sample of 364 representative still images (video frames). We sampled these frames across the entire range of detected face bounding-box sizes - from small, distant faces to close-ups. This stratified selection ensured that a compact sample provided sufficient diversity to verify agreement between the formula calculations and ground truth.
+\item
+  \textbf{Social-State Ground-Truth Dataset (Continuous Video-Level):} An independent subset of 30.19 hours of recordings from 51 children was fully annotated into the three target social states (Interacting, Available, Alone). These temporal labels served as the ground truth for optimizing our classification rules and parameters via child-level 5-fold cross-validation, as well as evaluating final end-to-end pipeline segmentation.
+\end{enumerate}
+
+\subsection{Automated Detection of Social Cues}\label{automation}
+
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:module-metrics}Performance metrics for each module in the multimodal processing pipeline.}
+
+\begin{tabular}{lllll}
+\toprule
+Metric & \multicolumn{1}{c}{Person Detection} & \multicolumn{1}{c}{Face Detection} & \multicolumn{1}{c}{Face Proximity} & \multicolumn{1}{c}{Speech Type Classification}\\
+\midrule
+mAP@0.5 & 0.70 & 0.91 & - & -\\
+Precision & 0.74 & 0.94 & - & 0.69\\
+Recall & 0.57 & 0.83 & - & 0.73\\
+F1 Score & 0.65 & 0.88 & - & 0.66\\
+Pearson & - & - & 0.95 & -\\
+MAE & - & - & 0.09 & -\\
+RMSE & - & - & 0.11 & -\\
+\bottomrule
+\addlinespace
+\end{tabular}
+
+\begin{tablenotes}[para]
+\normalsize{\textit{Note.} All metrics are unitless standard performance indices bounded between 0.00 and 1.00, where higher values indicate better performance, except for MAE (Mean Absolute Error) and RMSE (Root Mean Squared Error), where lower values represent lower error. mAP@0.5 = Mean Average Precision at an IoU threshold of 0.50; Pearson = Pearson correlation coefficient (r).}
+\end{tablenotes}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
+The pipeline to classify experiences into the three social states rested on four automated processing modules: face detection, person detection, face proximity estimation, and speech type classification (see Figure \ref{fig:pipeline-states}). Full details regarding computational hardware, fine-tuning procedures, and class-level evaluation metrics are provided in the supplementary material.
+
+Rather than directly deploying off-the-shelf models, domain- and task-specific adaptation was required across our modules. Regarding face detection, the standard YOLO models lack a category for human faces (Tian et al., 2025). Furthermore, while base YOLO detects persons, egocentric recordings frequently capture the key child's own body parts; an off-the-shelf detector would erroneously classify these as person and register them as social partners. We therefore adapted the architecture to detect faces and explicitly detect only external social partners. The visual models were fine-tuned on the 26.95-hour bounding-box ground-truth dataset via a stratified 80-10-10 child-level split: 80\% of the annotated frames were used for model training, 10\% for validation during training to monitor performance and prevent overfitting, and the remaining 10\% served as an independent test set for final evaluation. To quantify detection performance on this test set, we report the \(F_1\) score (Rijsbergen, 1980), which is the harmonic mean of Precision and Recall:
+
+\[
+F_1 = 2 \times \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}
+\]
+
+where Precision and Recall are defined as:
+\[
+\text{Precision} = \frac{\text{True Positives}}
+{\text{True Positives} + \text{False Positives}}
+\]
+
+\[
+\text{Recall} = \frac{\text{True Positives}}
+{\text{True Positives} + \text{False Negatives}}
+\]
+The \(F_1\) score prioritizes False Positives and False Negatives equally and is particularly well-suited for our dataset with high class imbalance, because it evaluates model performance strictly on actual target occurrences. Model fine-tuning yielded test-set \(F_1\) scores of 0.88 for Face Detection and 0.65 for Person Detection (see Supplementary Material Section \emph{Automated Analysis Pipeline: Visual Processing} for complete training and evalatuon metrics).
+
+For Speech Type Classification, we adapted the pretrained BabyHuBERT architecture (Charlot et al., 2025). While the original model classifies speaker types (key child, other children, male, and female adults), our analysis required categorizing speech types: Key Child Speech (KCS), Key Child-Directed Speech (KCDS), and Overheard Speech (OHS). We fine-tuned the model using a stratified 80-10-10 child-level split on the openly available ChildLens dataset (Suffo et al., 2026), which contains speech-type and activity annotations. On the held-out test set, the tuned model yielded a macro-averaged \(F_1\) score of 0.66 (class-level \(F_1 =\) 0.45--0.84), which closely aligns with the benchmark performance reported for the original speaker-type architecture (macro-averaged \(F_1 = 0.64\); class-level \(F_1 = 0.47\text{--}0.75\)). A detailed overview of training and evaluation metrics is available in Section \emph{Automated Analysis Pipeline: Audio Processing} in the supplementary material.
+
+Finally, face proximity (Proximity \(\in [0, 1]\)) was estimated using a logarithmic formula based on the area of the detected YOLOv12 face bounding boxes:
+
+\[
+\text{Proximity} = \frac{\ln(\text{Area}_{detected}) - \ln(\text{Area}_{min})}{\ln(\text{Area}_{max}) - \ln(\text{Area}_{min})}
+\]
+
+The formula normalizes the log-transformed face area (\(\text{Area}_{detected}\)) between the smallest (\(\text{Area}_{min}\)) and largest (\(\text{Area}_{max}\)) detections labeled in the bounding-box ground-truth dataset, resulting in a proximity index between 0 and 1. This approach accounts for the quadratic relationship between distance and area (Hartley \& Zisserman, 2018; Rubio-Sandoval et al., 2021) and applies an aspect-ratio correction (\(\epsilon = 1\)) to handle partially occluded faces in close proximity (see Supplementary Section \emph{Face Proximity Estimation} for details regarding reference sizes, aspect-ratio deviation rules, and visual examples).
+
+\begin{figure}
+\includegraphics[width=1\linewidth]{images/states-pipeline} \caption{Automated pipeline architecture and social state definitions. \textbf{A:} Automated multimodal processing pipeline for the classification of social states. The pipeline consists of four modules: Person Detection, Face Detection, Face Proximity Estimation (via logarithmic area scaling), and Speech Type Classification (STC). Outputs from these modules are integrated using classification rules with cross-validated parameters to classify one-second intervals into three mutually exclusive social states: Interacting, Available, and Alone. The final segment-level classification is validated against the 30.19-hour social-state ground-truth dataset. \textbf{B:} Representative frames and defining social cues for each social state. Cues are derived from the STC and YOLOv12 modules, including Key Child-Directed Speech (KCDS) and Overheard Speech (OHS).}\label{fig:pipeline-states}
+\end{figure}
+
+To validate this formula across the full proximity spectrum, two independent annotators provided proximity ratings for the 364-frame face-proximity ground-truth dataset. We assessed the relationship between the formula estimates and ground truth using Pearson's product-moment correlation coefficient (\(r\)), a metric that quantifies strength and direction of the linear relationship between two variables on a scale from -1 to +1 (Pearson, 1896). The analysis showed a strong positive correlation (\(r = 0.95\)), with a low mean absolute error (\(MAE = 0.09\)), which indicates that the automated proximity estimates closely mirror human judgment. A comprehensive breakdown of all module-specific evaluation metrics is provided in Table \ref{tab:module-metrics}. All fine-tuning scripts and end-to-end deployment workflows are openly available in our public code repository (\url{https://github.com/neleSuffo/preschool-social-ecology}).
+
+\subsection{Social State Classification}\label{state-fusion}
+
+We categorized children's social experiences into three mutually exclusive social states: Interacting, where the child is actively engaged in an exchange with one or more people or is part of an exchange involving more than two people; Available, where another person is present in the immediate area, but not actively engaged with the child; and Alone, where no other person is present in the room or immediate environment.
+
+The classification workflow consists of three stages: multimodal cue synchronization \hyperref[multimodal-cue-synchronization]{multimodal cue synchronization}, \hyperref[frame-level-classification]{frame-level rule-based state classification}, and \hyperref[segment-level-aggregation]{segment-level aggregation}. Across these stages, the pipeline was governed by 18 tunable parameters (summarized in Table S10 in the supplementary materials): two for multimodal cue synchronization, eleven for the frame-level classification rules and five for segment aggregation.
+
+\subsubsection{Multimodal Cue Synchronization}\label{multimodal-cue-synchronization}
+
+To balance computational feasibility across hundreds of hours of video with the need to capture rapid movements, visual inference was executed at 3 frames per second (sampling every 10th frame from the raw 30-fps dataset). For every sampled frame, the YOLOv12 models extracted bounding-box coordinates and confidence scores for detected persons and faces, and the proximity formula calculated a continuous proximity score for each detected face. In parallel, an off-the-shelf YOLOv12 model was used to detect books. Bounding boxes falling entirely within detected books regions were excluded to prevent illustrated characters from triggering false-positive social detections.
+
+Because the Speech Type Classification (STC) module produces continuous segments with explicit onset and offset timestamps, these speech segments (KCS, KCDS, and OHS) were mapped onto the corresponding sampled frames. Prior to state classification, each sampled frame was represented as a multimodal cue profile containing:
+
+\begin{itemize}
+\tightlist
+\item
+  Binary presence flags for each speech category (KCS, KCDS, and OHS),
+\item
+  Spatial bounding-box detections and confidence scores for visible persons and faces,
+\item
+  Continuous proximity scores for detected faces.
+\end{itemize}
+
+\subsubsection{Frame-Level State Classification Rules}\label{frame-level-classification}
+
+Each sampled frame was then classified into a provisional social state using classification rules applied in top-down priority (Interacting \textgreater{} Available \textgreater{} Alone). To incorporate temporal context into frame-level decisions, the pipeline computed continuous temporal signals across rolling windows:
+
+\begin{itemize}
+\tightlist
+\item
+  \emph{Visual Presence Signal:} A centered 1-second moving average (3 consecutive sampled frames) of maximum person and face detection confidence, designed to stabilize detections against motion blur caused by rapid camera movement.
+\item
+  \emph{Binary Visual Persistence Flags:} High confidence person or face detections were retained over a short-term memory window to bridge brief visual occlusions or partner movement outside the camera field of view.
+\item
+  \emph{Sustained Speech Fractions:} Rolling temporal evaluation of the proportion of speech frames (KCDS or OHS) against defined proportion parameters to confirm sustained vocal activity.
+\end{itemize}
+
+A frame was classified as Interacting if it triggered any of the following three classification rules:
+
+\begin{itemize}
+\tightlist
+\item
+  \emph{Rule 1: Conversational Turn-Taking:} Identified by a dyadic exchange between the child (KCS) and a social partner (KCDS) where inter-speaker gaps (KCS\(\leftrightarrow\)KCDS) were \(\le\) 5 seconds and intra-speaker gaps (KCS\(\leftrightarrow\)KCS or KCDS\(\leftrightarrow\)KCDS) did not exceed 1 seconds.
+\item
+  \emph{Rule 2: Physical Proximity:} Based on the confident detection of a face whose size indicated close-range interaction (proximity score \(\ge\) 0.60 with detection confidence \(\ge\) 0.15).
+\item
+  \emph{Rule 3: Sustained KCDS:} Periods of continuous key child-directed speech (KCDS). This rule was gated by the visual presence signal to prevent background media from triggering false positives.
+\end{itemize}
+
+If none of the Interacting rules were satisfied, the frame was classified as Available if it triggered either of the following classification rules:
+
+\begin{itemize}
+\tightlist
+\item
+  \emph{Rule 4: Visual Persistence:} Instances where a person or face was recently detected within a short-term memory window.
+\item
+  \emph{Rule 5: Intermittent Speech:} Sustained background OHS gated by the visual presence signal to confirm partner co-presence and avoid false positives from media or other non-social sources.
+\end{itemize}
+
+Frames that triggered none of the active classification rules were assigned to the default state of Alone.
+
+All parameters were optimized through child-level 5-fold cross-validation on the 30.19-hour social-state ground-truth dataset. All parameters were optimized through child-level 5-fold cross-validation on the 30.19-hour social-state ground-truth dataset. A complete specification of all classification rules, mathematical derivations, and cross-validation procedures is detailed in Supplementary Section \emph{Multimodal Data Aggregation and Optimization}, with all final parameter values summarized in Table S10.
+
+\subsubsection{Segment-Level Aggregation and Validation}\label{segment-level-aggregation}
+
+To translate noisy, frame-level classifications into continuous social states, we applied the Pruned Exact Linear Time (PELT) algorithm (Killick et al., 2012). PELT analyzes the continuous visual presence signal and partitions the video stream into distinct temporal segments at points where the visual presence signal shifts significantly. Each segment was assigned a single overall state based on the proportion of frame-level triggers:
+
+\begin{itemize}
+\tightlist
+\item
+  Interacting: When active interaction rules (Rules 1--3) were triggered and the proportion of interaction frames reached \(d_{\text{int}} \ge\) 40\%.
+\item
+  Available: When the criteria for Interacting were not met, but the combined proportion of Interacting and Available frames met or exceeded the threshold (\((d_{\text{int}} +d_{\text{avl}}) \ge\) 45\%).
+\item
+  Alone: When the combined proportion of co-presence frames was below this baseline threshold.
+\end{itemize}
+
+Consecutive frames of the same state were then converted into continuous timestamped segments and refined through three temporal smoothing operations:
+
+\begin{itemize}
+\tightlist
+\item
+  \emph{Segment Merging:} Adjacent episodes of the same social state separated by brief interruptions were combined to prevent fragmentation.
+\item
+  \emph{Gap Stretching:} Short unassigned gaps between states were filled by extending the preceding state.
+\item
+  \emph{Default Assignment:} Any remaining larger gaps were assigned to Alone.
+\end{itemize}
+
+Figure \ref{fig:interaction-visualizations} illustrates this complete pipeline flow on an exemplary sequence of 12 consecutive sampled frames. It demonstrates how visual detections, proximity scores, and speech types are consolidated via classification rules amd temporal smoothing into a continuous Interacting segment. Analogous sequence visualizations for continous Available and Alone segments are provided in the supplementary section \emph{Multimodal Sequence Visualizations} (Figures S14 and S15).
+
+\begin{figure}[!hb]
+\includegraphics[width=1\linewidth,]{manuscript_files/figure-latex/interaction-visualizations-1} \caption{Exemplary sequence of twelve consecutive sampled frames within an overarching continuous Interaction segment. Bounding boxes highlight visual detections: person detections (green) and face detections with estimated physical proximity (D, blue). The box in the lower left details the evaluated Classification Rules for the Interacting state ([\text{v}] indicates satisfied criteria; [\,] indicates inactive). An acoustic indicator (pink/rose) below the box displays the detected speech classes (Key Child-Directed Speech [KCDS], Key Child Speech [KCS], or Overheard Speech [OHS]; 'None' if unvoiced). Through Pruned Exact Linear Time (PELT) change point smoothing, individual frames are classified as part of a continuous interaction segment overall, even when visual contact is temporarily obstructed by movement (e.g., frames 27390–27440 where the face is briefly occluded).}\label{fig:interaction-visualizations}
+\end{figure}
+
+Validation of the final smoothed segments against the 30.19-hour social-state ground-truth dataset showed robust agreement. Averaged across five child-level validation folds, the pipeline achieved an overall macro-averaged \(F_1\) score of \(0.63 \pm 0.03\) (\(M \pm SD\)). Performance was highest for the Interacting state (\(F_1 = 0.74 \pm 0.06\)), followed by Alone (\(F_1 = 0.58 \pm 0.12\)) and Available (\(F_1 = 0.57 \pm 0.04\)), which proved more challenging to distinguish. This reflects a documented difficulty in social signal processing regarding the detection of interaction formations and passive co-presence (Cristani et al., 2013). Detailed performance metrics are reported in Table \ref{tab:segments-evaluation-metrics}.
+
+\begin{table}[tbp]
+
+\begin{center}
+\begin{threeparttable}
+
+\caption{\label{tab:segments-evaluation-metrics}Evaluation metrics for the rule-based classification of social states. Values represent mean scores across 5-fold child-level cross-validation.}
+
+\begin{tabular}{lcccc}
+\toprule
+  & \multicolumn{1}{c}{Interacting} & \multicolumn{1}{c}{Available} & \multicolumn{1}{c}{Alone} & \multicolumn{1}{c}{Macro AVG / Overall}\\
+\midrule
+F1 Score & 0.74 & 0.57 & 0.58 & 0.63\\
+Precision & 0.84 & 0.50 & 0.60 & 0.65\\
+Recall & 0.67 & 0.66 & 0.58 & 0.64\\
+Cohen's $\kappa$ & — & — & — & 0.45\\
+\bottomrule
+\addlinespace
+\end{tabular}
+
+\begin{tablenotes}[para]
+\normalsize{\textit{Note.} Metrics were calculated on a per-second basis across the 30.19-hour social-state ground-truth dataset.}
+\end{tablenotes}
+
+\end{threeparttable}
+\end{center}
+
+\end{table}
+
+\subsection{Statistical Analysis}\label{statistical-analysis}
+
+We used generalized linear mixed models to model the effect of age on the variables of interest. We performed statistical analyses in R (Team, 2020) using the brms package (Bürkner, 2017) for Bayesian multilevel modeling. Continuous predictors (Age) were centered and scaled (Z-scored) prior to analysis. To account for the repeated-measures nature of the data, all models included a random intercept for child \((1 \mid child)\) to adjust for individual baseline differences. For segment-level models of speech production and exposure (second and third analyses) we also included by-child random slopes for social state \((1 + state \mid child)\) to allow each child's response to different social states to vary. Observations were weighted by segment duration (or total recording duration in global models) to ensure that longer durations had a proportionally greater influence on the posterior estimates and to capture the actual time distribution rather than discrete segment counts.
+
+For the first analysis (time distribution across social states), we used a Categorical distribution with a multinomial logit link because the data consist of three mutually exclusive, unordered categories. This approach ensures that the predicted probabilities for all states sum to one at any given age (brms notation: \(state \mid weights(duration) \sim age + (1 \mid child)\)). For the second and third analysis (child language production and speech exposure), we applied a Zero-One-Inflated Beta (ZOIB) distribution. This family was selected because both child vocalization and environmental speech exposure are proportions bounded between zero and one that exhibit significant ``spikes'' at the boundaries (silence or continuous speech). This ZOIB model separately estimates the probability of segments with either no or constant speech, while simultaneously modeling the continuous proportion for the remaining segments (brms notation: \(p_{kcs} \mid weights(duration) \sim age * state + (1 + state \mid child)\) and \(p_{exposure} \mid weights(duration) \sim age * state + (1 + state \mid child)\)).
+
+In the first part of the fourth analysis (conversational turn-taking rate), we used a Hurdle Log-normal distribution to account for the non-negative, right-skewed nature of turn-taking frequency. This two-part model simultaneously estimates the probability of zero-turn segments---representing unidirectional speech---and the rate of reciprocal exchanges when they occur (brms notation: \(tpm \mid weights(duration) \sim age + (1 \mid child), hu \sim age + (1 \mid child)\)). For the second part of the fourth analysis (conversational block initiation), we also fit a ZOIB distribution. Given that conversational agency frequently resulted in segments where either one or all of the conversational blocks were initiated by one party, the ZOIB family provided a more authentic fit for these boundary values than a standard transformed Beta model (brms notation: \(p_{agency} \sim age * agency + (1 \mid child)\)). Finally, for the fifth analysis (specificity of social cues), we used a Binomial distribution to model the probability of isolated social cues coinciding with the interaction social state. Observations were aggregated per child and cue condition. The total count of cue-present frames was treated as binomial trials (\(n\)), and the frames coinciding with an interaction state as successes (\(p\)), which naturally weights children based on their total data contribution (brms notation: \(p \mid \text{trials}(n) \sim \text{age} \times \text{condition} + (1 \mid \text{child})\)).
+
+\section{Results}\label{results}
+
+To characterize the preschoolers' social ecology in the home environment, we report our pipeline's outputs across five core areas. First, we investigate the distribution of time across the three social states (interacting, available, alone). Next, we focus on the linguistic properties within these social states, namely the child's speech production alongside their speech exposure. We then evaluate the dynamics and conversational agency of their conversational turn-taking behaviors. Finally, we examine how the specificity of individual social cues for active interaction develops with age. Unless otherwise specified, reported values represent posterior medians, and bracketed intervals denote 95\% Bayesian credible intervals (CrIs).
+
+\subsection{Descriptive dynamics of home social states}\label{descriptive-dynamics-of-home-social-states}
+
+Before modeling developmental trajectories, we evaluated the temporal distribution of the classified social states across home recording sessions. The majority of sessions were characterized by dynamic shifts among all three social states (71.9\%), while 23.8\% of sessions captured two states and only 4.3\% of sessions remained restricted to a single state throughout the recording. The Interacting state was almost omnipresent and appeared in 99.7\% of all sessions. Children were present in an Available state in 94.1\% of sessions, and experienced solitary episodes in 73.8\% of sessions.
+
+Across all sessions, the automated pipeline identified \(N=\) 5657 distinct segments. Interacting segments lasted a median of 84.3 seconds (\(M=\) 178.5, \(SD=\) 248.90), while Available states spanned a median of 68.2 seconds (\(M=\) 134.2, \(SD=\) 197.7), and Alone segments lasted a median of 99.7 seconds (\(M=\) 226.0, \(SD=\) 322.4; see supplementary material Table S11 for complete duration distributions). Representative timelines which illustrate the state distribution compared to the social-state ground truth across three different 30-minute videos are provided in the supplementary material (Figure S17).
+
+\subsection{Time spent in different social states}\label{time-spent-in-different-social-states}
+
+\begin{figure}
+\includegraphics[width=1\linewidth]{images/results-plot-1} \caption{Social ecology and speech context of preschoolers across development in the home environment. \textbf{A:} Relative proportion of total recording time spent in Interacting, Available, and Alone states. \textbf{B:} Key child speech proportion: Percentage of time within each specific social state during which the key child spoke. \textbf{C:} Speech exposure proportion: Percentage of time within each specific social state during which the child was exposed to speech. While models were fit on social state segments with random effects for child, points represent each child’s aggregated proportion within each social state $(N=107)$, with point sizes scaled to total recording duration. Lines and shaded areas represent model-predicted values with 95\% credible intervals (CrI).}\label{fig:results-plot-1}
+\end{figure}
+
+Our analysis shows a clear shift in the frequency of social states across the preschool years. At age three, time is spent primarily in social interaction, with children spending 67.70\% {[}55.46, 78.66{]} of their time interacting (see Figure \ref{fig:results-plot-1}A). By the sixth birthday, this frequency decreased to roughly 39.59\% {[}26.95, 52.74{]}, a significant developmental decline (average marginal effect of age: \(\beta_{marg} =\) -0.08 {[}-0.15, -0.02{]}). This decrease was accompanied by a mirroring increase in time spent alone and passive availability with increasing age (alone: \(\beta_{marg} =\) 0.04 {[}0.01, 0.07{]}, available: \(\beta_{marg} =\) 0.04 {[}-0.01, 0.10{]}). Time spent in the Available state more than doubled, rising from 22.46\% {[}13.57, 33.21{]} at age three to 37.89\% {[}26.24, 50.68{]} by the sixth birthday. Similarly, periods of being alone more than doubled, increasing from 9.85\% {[}6.53, 13.79{]} to 22.52\% {[}16.80, 29.18{]}. In all of this, we observed considerable variation between children in how much time they spent in each state (\(\sigma\) range = \(1.03 \text{--} 1.18\)). These results indicate a developmental reorganization of children's social ecology at home: as children get older, their home environment transitions from frequent interaction towards a mix of interacting, passive availability, and alone time.
+
+\subsection{Key child speech production}\label{key-child-speech-production}
+
+Next, we analyzed children's language use in different social states, where we explicitly focused on the key child's own vocalizations (Key Child Speech, KCS). As mentioned above, our corpus allows for rare insights into how children use language when they are alone. When considering the overall key child speech proportion relative to the total duration of the recording, we found a significant decrease with age, falling from 33.02\% {[}32.72, 33.31{]} at age three to 27.89\% {[}27.61, 28.17{]} by the sixth birthday (\(\beta_{age} =\) -0.07 {[}-0.07, -0.06{]}, Figure \ref{fig:results-plot-2}B). This global decline aligns with the previously observed reduction in time spent interacting with others.
+
+When looking at the key child speech proportion within specific social contexts (Figure \ref{fig:results-plot-1}B), speech rates correspond closely to the
+immediate social context: as expected, direct interaction involved a significantly higher key child speech proportion than the Alone state (\(\beta =\) 0.85 {[}0.71, 0.99{]}). Importantly, because the pipeline classifies social states based on multimodal social cues, including proximity, KCDS, and turn-taking, rather than KCS alone, the child's speech production varied freely across all three states. During Interacting segments, KCS occupied approximately 35.72\% {[}32.73, 38.71{]} of the time at age three and remained stable at roughly 36.43\% {[}33.33, 39.59{]} by the sixth birthday (\(\beta_{marg} =\) 0.01 {[}-0.06, 0.07{]}). In the Available state, children spoke approximately 24.51\% {[}20.45, 29.01{]} of the time, which likewise remained stable throughout the preschool years (\(\beta_{marg} =\) -0.01 {[}-0.12, 0.11{]}). Notably, when alone, children still spoke roughly 20\% of their time, ranging from 20.04\% {[}15.24, 25.46{]} at age three to 19.14\% {[}14.64, 24.38{]} by the sixth birthday (\(\beta_{marg} =\) -0.02 {[}-0.17, 0.13{]}). This observation reflects behaviors such as self-directed speech and solitary role-play, as observed during video inspections, among other individual activities (a pattern confirmed by supplementary analyses of the ground-truth social-state dataset, see section \emph{Bayesian Analyses on Ground-Truth Dataset} in the supplementary material). Across all states, we observed substantial individual variation in language activity (\(\sigma\) range = \(0.50 \text{--} 0.72\)), which suggests that children differ notably in their baseline talkativeness. Ultimately, total recorded key child speech production decreased with age due to shifts in time allocation; however, speech proportions within any given social state remained a stable developmental feature.
+
+\subsection{Environmental speech exposure}\label{environmental-speech-exposure}
+
+We further analyzed the amount of language children are exposed to in the home environment, with speech exposure defined as the combination of child-directed and overheard speech. Measuring speech exposure is a standard approach to understanding development, as linguistic input provides the raw material for language learning (Ochs \& Kremer-Sadl, 2020; Ochs \& Schieffelin, 1984). On a global level, the overall speech exposure proportion relative to the total recording duration decreases significantly with age, falling from 39.83\% {[}39.45, 40.21{]} at age three to 29.47\% {[}29.10, 29.82{]} by the sixth birthday (\(\beta_{age} =\) -0.13 {[}-0.14, -0.12{]}, Figure \ref{fig:results-plot-2}C).
+
+However, when we look at speech exposure within specific social states, we find a different pattern: as shown in Figure \ref{fig:results-plot-1}C, linguistic exposure follows an expected hierarchy across social states that remained consistent across age groups. Children experienced a consistently high speech exposure proportion whenever interacting with others in the home environment; they heard speech for nearly half of the time during the Interacting state (47.28\% {[}43.56, 50.96{]} at age three) and roughly a third of the time in the Available state (29.82\% {[}24.28, 35.87{]} at age three). As expected, relative to being alone, exposure was significantly higher in both the Interacting (\(\beta =\) 1.23 {[}1.08, 1.38{]}) and Available (\(\beta =\) 0.40 {[}0.26, 0.54{]}) contexts. Even when alone, children heard speech approximately 22.07\% {[}16.72, 28.24{]} of the time at age three and 17.23\% {[}12.90, 22.17{]} by the sixth birthday, likely reflecting background noise from electronic media or household members in other rooms. The developmental trajectories within these states were consistently flat, which indicates that speech exposure does not change significantly with age (alone: \(\beta_{marg} =\) -0.09 {[}-0.25, 0.07{]}, interacting: \(\beta_{marg} =\) -0.05 {[}-0.12, 0.02{]}, available: \(\beta_{marg} =\) -0.09 {[}-0.23, 0.04{]}). This reflects a trade-off: although children spend more time in the Available state as they grow older, this increase is not sufficient to offset the steep decline in Interacting time and the corresponding rise in Alone time. Once again, we observed noticeable individual variation in exposure levels across all states (\(\sigma\) range = \(0.55 \text{--} 0.73\)), which suggests that children differ in the overall linguistic exposure in their household environment. In sum, while the overall speech exposure proportion was lower in older children, the speech exposure proportion within each social state was primarily differentiated by whether the child was in the company of others or alone, rather than by child age.
+
+\begin{figure}
+\includegraphics[width=1\linewidth]{images/results-plot-2} \caption{Global developmental trends in preschooler's home language environment. \textbf{A:} Conversational turn-taking rate (turns per minute) calculated over the full recording duration, \textbf{B:} Key child speech proportion relative to the total recording duration. \textbf{C:} Speech exposure proportion relative to the total recording duration. Points represent each child’s aggregated proportion or rate calculated over their total recording duration $(N=107)$, with point sizes scaled to total recording duration. Lines and shaded areas represent model-predicted values with 95\% CrI.}\label{fig:results-plot-2}
+\end{figure}
+
+\subsection{Characterization of conversational turn-taking behavior}\label{characterization-of-conversational-turn-taking-behavior}
+
+Next, we combined language production and exposure and focused on the temporal dynamics of conversational turn-taking. Turn-taking is characterized by reciprocal, alternating exchanges between conversational partners, and relatively short response times (Casillas et al., 2016; Levinson, 2016), and its frequency has been associated with better language abilities (Casillas et al., 2016; Donnelly \& Kidd, 2021; Romeo et al., 2018). We quantified the turn-taking rate as the number of conversational turns. A `conversational turn' was defined as a speaker exchange between the key child and a conversational partner occurring within a maximum inter-speaker gap of 5 seconds. In alignment with developmental turn-taking literature (Casillas et al., 2016; Levinson, 2016), we fixed this parameter to 5 seconds and determined the best setup for all remaining 17 parameters via child-level 5-fold cross-validation to maximize the Macro \(F_1\) score across all three social states.
+
+We first assessed the global frequency of conversational turns normalized to the full length of the recording session. This overall turn-taking rate decreased significantly as children aged, falling from 7.28 turns per minute {[}7.15, 7.42{]} at age three to 3.99 turns per minute {[}3.91, 4.07{]} by the sixth birthday
+(\(\beta_{age} =\) -0.17 {[}-0.18, -0.16{]}, Figure \ref{fig:results-plot-2}A). This global decline corresponds to the overall reduction in time spent in the Interacting state at home.
+
+However, when focusing specifically on the turn-taking rate relative to the total time spent interacting (Figure \ref{fig:results-plot-3}A), the turn-taking rate remains relatively stable as children age. While point estimates suggested a slight numerical decrease from approximately 10.71 turns per minute {[}10.01, 11.43{]} at age three to about 10.19 turns per minute {[}9.50, 10.91{]} by the sixth birthday,
+the age effect was not significantly different from zero (\(\beta_{age} =\) -0.01 {[}-0.05, 0.02{]}). This suggests that the rate of conversational turn-taking remains comparable across the preschool years. Similarly, supplemental analyses indicated that the average duration of individual child turns remained stable at approximately 3.0 seconds across this age range (\(\beta_{age} =\) -0.02 {[}-0.05, 0.01{]}). Likewise, the average duration of conversational blocks remained broadly comparable across the preschool years, estimated at 13.13 seconds {[}12.51, 13.76{]} at age three and 11.88 seconds {[}11.30, 12.48{]} by their sixth birthday. These results highlight that while the overall turn-taking rate observed across their time at home may decrease as children spend more time alone, the pacing, turn length, and overall duration of conversational exchanges remain consistent whenever social interaction occurs.
+
+\begin{figure}
+\includegraphics[width=1\linewidth]{images/results-plot-3} \caption{Structural components and environmental cues of home social interactions across development. \textbf{A:} Conversational turn-taking rate (turns per minute) during periods of interaction. \textbf{B:} Proportion of social exchanges initiated by the child versus the adult during periods of interaction. \textbf{C:} Cue specificity for social interaction: Model-predicted probability that an isolated social cue (Only Face, Only KCDS, Only Person, or Only Speech) coincides with an Interacting segment. While models were fit on social state segments (A, B) and cue observations (C) with random effects for child, points represent each child’s aggregated values over their total interacting duration (A, B) or total cue observations (C) $(N=107)$, with point sizes scaled to total interaction duration (A, B) and total observation frames (C). Lines and shaded areas represent model-predicted values with 95\% CrI.}\label{fig:results-plot-3}
+\end{figure}
+
+Beyond the turn-taking rate, we investigated conversational agency involved in initiating these exchanges. Understanding who starts a conversation is relevant for characterizing a child's communicative autonomy (Bohn et al., 2024), as it reveals whether children are passive or active conversational participants (Foushee et al., 2023). We assessed this by grouping vocalizations into temporal blocks, defined as sequences of conversational turns where all speaker exchanges remained within the 5-second threshold. We then quantified conversational agency by identifying the initiator of each block---either the key child or a conversational partner---and calculating the proportions relative to the total number of blocks. As illustrated in Figure \ref{fig:results-plot-3}B, children share conversational agency nearly equally with their partners throughout the preschool years. Children initiated approximately 50.72\% {[}49.47, 52.02{]} of conversational blocks at age three and 49.92\% {[}48.58, 51.35{]} by the sixth birthday. This level of agency remains remarkably stable across development (\(\beta_{age} =\) -0.01 {[}-0.04, 0.02{]}). Similarly, this stability was highly consistent across the sample, with minimal variation between individual children (\(\sigma =\) 0.01 {[}0.00, 0.03{]}). In light of earlier work on two-year-old children (Bohn et al., 2024) showing that, across cultural contexts, adults are typically the main initiators of conversations, these results suggest that from age three onward, children demonstrate a balanced, active participation in seeking conversations (Rossano et al., 2022; VanDam et al., 2022).
+
+\subsection{Specificity of isolated social cues for social interaction}\label{specificity-of-isolated-social-cues-for-social-interaction}
+
+To conclude our analysis, we evaluated the specificity of isolated social cues across development in the home environment ---that is, how reliably a frame containing only a single cue (such as an isolated visible face or speech) coincided with an active interaction segment rather than an Available or Alone segment. As illustrated in Figure \ref{fig:results-plot-3}C, all cues showed a developmental decline in their specificity for active interaction. For a three-year-old, an isolated visible face showed the highest initial specificity for an interaction segment, with a 77.16\% probability {[}68.86, 84.67{]} of occurring within an interaction segment, closely followed by isolated KCDS at 75.35\% {[}66.72, 83.09{]}. The presence of a person alone (66.44\% {[}56.35, 76.01{]}), and general speech exposure alone (61.38\% {[}50.85, 71.72{]}) were also reliable indicators of social engagement at this age. This suggests that for younger children, social cues are highly redundant; the presence of any single cue reliably indicates a social interaction.
+
+However, we observed a developmental decline in the specificity of every individual cue. Facial presence showed the sharpest decline (\(\beta_{marg} =\) -0.41 {[}-0.63, -0.21{]}; by the sixth birthday, the probability that a visible face alone coincided with an active interaction dropped to 43.04\% {[}32.30, 54.30{]}, meaning that frames with only visible faces were just as likely to occur within Available or Alone segments. In contrast, both key child-directed speech (\(\beta_{marg} =\) -0.20 {[}-0.41, 0.01{]}) and a visible person alone (\(\beta_{marg} =\) -0.19 {[}-0.40, 0.01{]}) showed only slight, non-credible age trends, while KCDS remained the most robust indicator of interaction throughout the preschool years (\(\beta_{marg} =\) -0.20 {[}-0.41, 0.01{]}). Notably, the distinction between speech types proved essential: while KCDS maintained high specificity across the preschool years, general speech exposure was the least specific marker and showed a significant decline (\(\beta_{marg} =\) -0.24 {[}-0.46, -0.05{]}) as it frequently occurred during Available or Alone segments instead. We also observed substantial individual variation in how these cues were associated with interaction across different children (\(\sigma =\) 1.15 {[}0.99, 1.33{]}). This overall decline in cue specificity suggests an increasingly complex social reality in the home environment; as children age, isolated social cues become less informative on their own, meaning that the presence of an isolated face or voice no longer serves as a reliable marker of an active interaction.
+
+\section{Discussion}\label{dicussion}
+
+In this study, we present an automated multimodal processing pipeline to map the social ecology of children aged three to five in the home environment. Based on cross-sectional recordings from 107 children, our results show a clear age-related shift in this ecology: whereas recordings at age three were dominated by direct interaction, recordings around the sixth birthday captured a broader mix of Interaction, Available and Alone states. In parallel, we observe a significant decline in overall speech exposure, speech production and total conversational turns. However, this global decline reflects a reallocation of time to different states rather than a change in interactive pacing: within active interactions, children produce and hear language at stable intensities, where turn-taking rates, individual turn durations, and conversational block lengths remain stable. Furthermore, we observe a consistently balanced level of conversational agency, with children already initiating approximately half of their conversational episodes by age three and maintaining this equal partnership throughout the preschool years. Finally, we show that isolated social cues are redundant at younger ages but become significantly less specific for interactions as the social environment becomes more complex.
+
+As children progress through the preschool years, they must learn to navigate an increasingly ambiguous sensory environment where social cues, such as faces and speech, become less specific for active interaction. For three-year-olds, isolated cues show high specificity for social interactions, meaning that, for instance, the presence of a visible face alone coincides with an interaction most of the time. By the sixth birthday, however, the child navigates an environment where the presence of others often represents passive co-presence rather than an ongoing interaction, which is reflected by a developmental decline in specificity of isolated visual and acoustic cues.
+
+Crucially, multimodal integration has long been documented in infancy as a mechanism for linking synchronized sights and sounds, like matching moving lips to heard speech (Bahrick \& Lickliter, 2000; Bohn \& Casillas, 2026; Kuhl \& Meltzoff, 1982; Rowland et al., 2026). Preschoolers, however, face a very different challenge. Rather than just matching basic sights and sounds, older preschoolers must read more subtle social cues: combining body orientation, gaze direction, what someone is currently doing, and whether their speech is actually directed at them to assess whether a person intends to interact. This transition marks a shift from detecting simple sensory matches to interpreting social intent, where children coordinate multiple contextual cues to decide whether an available person is genuinely ready to engage (Bohn \& Casillas, 2026; Butler \& Markman, 2012; Quam \& Swingley, 2012). Such navigation might rely on higher-order executive functions, particularly the inhibitory control necessary to wait for conversational gaps (Blain-Brière et al., 2014), alongside the predictive coordination of language comprehension (Lindsay et al., 2019).
+
+Beyond the navigation of social cues, the temporal pacing of conversational exchanges shows notable stability across development. Our data demonstrate that individual child turn durations remain stable at approximately three seconds, inter-speaker turn gaps of roughly 0.8 seconds are consistently sustained, and conversational block lengths persist at approximately 14 to 15 seconds across the preschool years. However, temporal duration in clock time captures only how long individual turns and conversational blocks last; it does not measure how much is spoken or how complex the vocalizations are. Previous literature typically finds that children's conversational contributions become longer with age when measured by linguistic units such as Mean Length of Utterance (MLU) (Brown, 1973; Casillas et al., 2016). In contrast, our results show that children's turns and conversational blocks remain relatively short throughout the preschool years. This pattern aligns with observational work on peer play which found that the average duration of social interactions remains stable between two- and four-year-olds (Rossano et al., 2022). Because articulation rates increase across the preschool years (Canault et al., 2026), older children can produce more complex syntax and use richer vocabulary within the same temporal window rather than speaking for longer periods of clock time. Furthermore, an increase in topic complexity may explain why conversational turn gaps remain around 0.8 seconds: as older children respond to more demanding questions, the additional cognitive effort needed to formulate an answer can offset gains in processing speed and keep response latencies steady (Casillas et al., 2016).
+
+Similarly, the stability of shared agency in initiating conversational blocks indicates that children maintain their role as active, equal participants in conversations from age three onward (Rogoff, 2003). This developmental trajectory helps contextualize divergent findings in younger toddlerhood. While earlier cross-cultural work by Bohn et al. (2024) observed adult dominance in conversational initiations among two-year-olds during structured mealtimes, daylong audio tracking by VanDam et al. (2022) found that toddlers already initiate the majority of conversations when sampled across entire days. These contrasting patterns suggest that conversational agency depends on the situational context: structured routines like mealtimes naturally favor adult guidance, whereas unstructured free play encourages child-led conversations. Observational work in preschool settings further demonstrates that from as early as two to four years of age, children actively recruit interaction partners using intentional communicative signals like mutual gaze (Rossano et al., 2022). Expanding beyond these early toddler settings, our findings capture the home ecologies of older preschoolers across different everyday contexts and demonstrate that by age three, children show a balanced conversational agency that remains stable across the preschool years.
+
+These environmental changes provide a context for interpreting established theories of development. While social interaction is often viewed as the primary driver of development, for example in domains like language and social-cognition (Piaget, 1964; Tomasello, 2019; Vygotsky, 1978), these frameworks have largely been evaluated through brief, structured laboratory tasks or theoretical models. Dense naturalistic evidence testing how these developmental dynamics unfold ``in vivo'' across unconstrained everyday life has remained limited. Our data indicate that within the home environment, the proportion of time spent interacting decreases as children spend more time alone or available for interactions around others. Importantly, because the recordings capture home experiences, this pattern characterizes the specifications of the home social ecology rather than a global decline in children's social experiences. In Germany, children aged three to five typically spend parts of their weekdays in institutional daycare; this applies to all children in our dataset for whom demographic data were available as well (\(n=\) 101 out of 107 children). Consequently, the reduction in home interaction may reflect a reallocation of social energy, where frequent interactions shift to settings outside the household, while the home environment increasingly supports emerging behavioral independence and unguided free play (Ginsburg et al., 2007).
+
+This reallocation within the home aligns with increasing developmental self-sufficiency between the ages of three and five. From a supervisory and safety perspective, three-year-olds require frequent physical proximity and active monitoring to navigate daily routines (Morrongiello, 2005). Over the preschool years, however, children advance from externally guided rule compliance toward internalized, flexible self-regulation (Kopp, 1982). This internal regulation is reinforced by improved sustained attention and resistance to distraction (Ruff \& Capozzoli, 2003), which enables older preschoolers to engage independently in prolonged solitary tasks, like looking at books or solving puzzles. Our findings provide concrete empirical support for this progression: as children become increasingly capable of independent activities, active interactions decrease, while passive co-presence and solitary time more than double.
+
+Within the home environment, the observed restructuring likely also reflects growing behavioral autonomy and may be balanced by gains in communicative efficiency (Levinson, 2000) or shifted focus of the interactions. Rather than relying on the raw quantity of input alone, developmental progress in older children may be increasingly driven by the qualitative depth of the exchange (Hirsh-Pasek et al., 2015; Rowe, 2012). That is, advanced linguistic and social-cognitive skills may be associated with more focused social interactions that are also shorter and less frequent. From a social-learning perspective, children might be shifting more and more to self-regulated learning and require less parental supervision and behavioral guidance (Gweon, 2021; Tomasello, 2019). This advancing competence is further reflected in the stability of relative turn-taking count; despite increased exposure to background noise and reduced cue specificity, children demonstrate an improved ability to filter irrelevant signals and detect child-relevant speech to maintain dialogue (Casillas et al., 2016). This suggests that pragmatics and self-regulation may enable the older preschooler to be more selective and strategic in their social efforts, ensuring direct engagement even as their daily lives become more diverse and solitary (Hoff, 2006; Shatz \& Gelman, 1973; Wellman et al., 2001). However, these interpretations have to remain speculative for now, but highlight the importance of studying social interaction in vivo (Casillas, 2023; Rogoff, 2003).
+
+While our automated classification of social states relies on cross-validated classification rules and parameters, several methodological limitations highlight the need for further research. First, regarding demographic scope, our homogeneous sample of German middle-class families limits broader generalizability. Our recordings reflect home environments in the Global North where interactions occur primarily within the nuclear family, typically alongside one or two siblings (applied to 76.0\% of children), and where all children attended institutional kindergarten prior to primary school. As large-scale efforts in language development research demonstrate, more diverse, cross-cultural data are essential for true generalization (Bergelson et al., 2023). Second, our focus on home experiences inherently leaves out peer and caregiver dynamics in external daycare settings. While future work should aim to integrate home and institutional environments, our dataset provides balanced insights into the home environment: supplementary checks confirmed that recording times and kindergarten enrollment were comparable across age groups (see \emph{Participants and Dataset}). Furthermore, our average recording duration of 149.00 minutes per child represents a significant expansion beyond brief laboratory observations.
+
+Third, wearable camera choices entail clear trade-offs: compared to head-mounted cameras common in infant research (Long et al., 2024; Vong et al., 2024), our chest-height vest setup facilitated high wear compliance across the sample, as all 107 children contributed usable footage across multiple sessions (\(M=\) 49.21 minutes per session) and distributed device weight comfortably. Additionally, our setup provided greater rotational stability during rapid head movements typical of active preschoolers, while also being less intrusive for communicative partners. However, this increased stability of a chest-mounted camera meant capturing torso orientation rather than direct gaze or subtle head movements, and adults standing close can have their faces cropped by the narrower vertical FOV. Nevertheless, our core empirical findings are robust to camera placement: acoustic and conversational metrics rely on microphone proximity rather than the camera's location and social state classification relies on multimodal integration of visual and auditory cues, which makes interactions robustly detectable even when faces are momentarily out of frame. Differentiating between Available and Alone states remains the primary challenge across all egocentric recording setups. Although head-mounted cameras capture more upward faces, our chest camera's broad horizontal FOV captures surrounding body parts and floor-level movements; it is therefore unclear whether overall state distributions would substantially shift. Future research could explore vertically oriented cameras to preserve wide vertical views of communicative partners while maintaining torso stability.
+
+Finally, model performance across naturalistic egocentric recordings presents ongoing computer vision challenges. In particular, the single-frame person detection architecture (YOLOv12) had difficulties handling partial occlusions, extreme proximity, and bodies cut off by camera boundaries, which reduced recall across all age groups. Importantly, our pipeline's multimodal architecture was explicitly designed to buffer against such unimodal shortcomings. We explicitly enforced cross-modal convergence, such as requiring physical proximity aligned with acoustic evidence, to prevent isolated visual false negatives or false positives from disproportionately affecting state classification. Nevertheless, rule-based synchronization cannot absorb all sensory ambiguity. This was particularly evident in the distinction between Available and Alone states, where high situational variability limited the consistency of fixed parameters.
+
+Despite these challenges, our open-source pipeline was designed for modular reusability across other egocentric datasets and populations. Because the integrated visual and speech model components were fine-tuned on egocentric data, the framework generalizes well to other egocentric setups (e.g., head-mounted cameras) because detection and classification rely on proximity relative to the child. Therefore, applying the pipeline to new populations (e.g., infants) does not require retraining the underlying models. Instead, researchers can adjust the pipeline parameters against a modest set of population-specific social-state ground-truth segments to capture population-specific behavior (e.g., closer physical distances or frequent carrying). Although stationary, third-person setups fall outside this scope (for which dedicated architectures already exist, Tian et al., 2025), our modular pipeline makes automated social-state immediately accessible to other child-centered egocentric datasets.
+
+Looking further ahead, the development of multimodal models offers promising roads to build upon such modular pipelines. Methodologically, integrating temporal video architectures, like video transformers or spatio-temporal tracking, could resolve brief body-part occlusions across consecutive frames (Bertasius et al., 2021; Liu et al., 2021). Eventually, emerging end-to-end multimodal models may replace modular rule-based frameworks which directly learn state representations from continuous audiovisual streams (Ramachandram \& Taylor, 2017). Open, annotated datasets, such as ChildLens (Suffo et al., 2026) or BabyView (Long et al., 2024), will be vital for training and validating those next-generation architectures.
+
+Empirically, our analyses show that children vocalize frequently during solitary time and remain exposed to background speech, which aligns with complementary analyses of speech cues mapped onto the ground-truth social-state dataset (full analyses in the supplementary material section \emph{Bayesian Analyses on Ground-Truth Dataset}). This raises the question of what children actually experience during these periods. Manually coding the qualitative nature of these events across the dataset is beyond the scope of this baseline mapping study. However, by providing an automated pipeline that can identify and isolate these specific segments, our work establishes the empirical foundation for targeted qualitative inspections. Future investigations could combine automatic speech recognition (e.g., Whisper, Attia et al., 2024) with natural language processing to determine whether children's vocalizations during time alone represent self-regulatory private speech, imaginative role play, or singing, and whether speech exposure during these periods reflects distant household conversations or electronic media such as television or audiobooks. Beyond solitary time, a similar targeted approach should explore the semantic content and specific quality of active interactions and conversations (Köster et al., 2022), which will require different models capable of classifying specific activities.
+
+Equally important is the identification of conversational partners within these social states. While much of the existing literature focuses on infants or toddlers (Bohn et al., 2024; Long et al., 2024), where interaction is almost exclusively synonymous with adult-child exchange, preschoolers live a more diverse social landscape. In fact, the majority of children in our dataset grew up with siblings (76\% having one or two siblings), which means that household dynamics and unmeasured variations in sibling routines represent considerable sources of individual variability. In our current data, the observed decline in interaction time may be primarily driven by a reduction in adult-child interactions, while time spent with peers might remain constant or even increase. Such a distinction is critical,for example, for theories of social-cognitive development: the presence of siblings (Perner et al., 1994; Shahaeian et al., 2014) and a greater variety of interaction partners (Lewis et al., 1996) have been shown to positively influence the development of a Theory of Mind. Finally, children's engagement with objects and the physical environment remains a key dimension of their social ecology that has yet to be explored. To capture this full complexity, analytical pipelines must eventually mirror the multimodal integration of human perception itself (Ramachandram \& Taylor, 2017). A transition towards a fully automated, end-to-end pipeline will provide the scalability required to investigate whether the shift toward a more diversified home social ecology represents a general developmental pattern of human ontogeny or varies across different environmental and cultural contexts.
+
+In conclusion, the current study documents an age-related shift in the distribution of naturalistic social states within the home environment across the preschool years. By mapping the transition from a home environment dominated by social interaction at age three to a more diversified and independent ecology by the sixth birthday, we provide an empirical context for building theories of development situated in everyday life. This large-scale analysis was only made possible through our automated multimodal approach, which demonstrates the potential of automated pipelines for future scalable research across varied cultural settings. Ultimately, this study contributes to a more comprehensive and ecologically valid attempt to capture human development in its true, unscripted context.
+
+\section{Code and data availability statement}\label{code-and-data-availability-statement}
+
+Families provided written informed consent for the use of home recordings for non-commercial research purposes; because these protocols explicitly prohibit the external distribution of raw audio-visual materials, the raw home video recordings cannot be made publicly available. This distinguishes the present corpus from the ChildLens dataset (Suffo et al., 2026), which was used exclusively for training the audio classification models and remains available for research purposes. To ensure the transparency of our findings and maximize reusability, all derived data - including model detections (bounding boxes, proximity metrics and speech segments) and anonymized tabular outputs used for the analyses - are publicly shared alongside our code repository. The complete multimodal processing pipeline, fine-tuned model weights, deployment scripts, and analysis code are openly accessible at: \url{https://github.com/neleSuffo/preschool-social-ecology}.
+
+\newpage
+
+\section{References}\label{references}
+
+\begingroup
+\setlength{\parindent}{-0.5in}
+\setlength{\leftskip}{0.5in}
+
+\protect\phantomsection\label{refs}
+\begin{CSLReferences}{1}{0}
+\bibitem[\citeproctext]{ref-attiaKidWhisperBridgingPerformance2024}
+Attia, A. A., Liu, J., Ai, W., Demszky, D., \& Espy-Wilson, C. (2024, May 15). \emph{Kid-{Whisper}: {Towards Bridging} the {Performance Gap} in {Automatic Speech Recognition} for {Children VS}. {Adults}}. \url{https://doi.org/10.48550/arXiv.2309.07927}
+
+\bibitem[\citeproctext]{ref-baerFittingMessageListener2018}
+Baer, C., \& Friedman, O. (2018). Fitting the {Message} to the {Listener}: {Children Selectively Mention General} and {Specific Facts}. \emph{Child Development}, \emph{89}(2), 461--475. \url{https://doi.org/10.1111/cdev.12751}
+
+\bibitem[\citeproctext]{ref-bahrickIntersensoryRedundancyGuides2000}
+Bahrick, L. E., \& Lickliter, R. (2000). Intersensory redundancy guides attentional selectivity and perceptual learning in infancy. \emph{Developmental Psychology}, \emph{36}(2), 190--201. \url{https://doi.org/10.1037/0012-1649.36.2.190}
+
+\bibitem[\citeproctext]{ref-bambachToddlerVisualObject2018}
+Bambach, S., Crandall, D. J., Smith, L. B., \& Yu, C. (2018). Toddler-inspired visual object learning. \emph{Proceedings of the 32nd International Conference on Neural Information Processing Systems, {NIPS}'18}, 1209--1218.
+
+\bibitem[\citeproctext]{ref-bambachLendingHandDetecting2015}
+Bambach, S., Lee, S., Crandall, D. J., \& Yu, C. (2015). Lending {A Hand}: {Detecting Hands} and {Recognizing Activities} in {Complex Egocentric Interactions}. \emph{2015 {IEEE International Conference} on {Computer Vision} ({ICCV})}, 1949--1957. \url{https://doi.org/10.1109/ICCV.2015.226}
+
+\bibitem[\citeproctext]{ref-bergelsonEverydayLanguageInput2023}
+Bergelson, E., Soderstrom, M., Schwarz, I.-C., Rowland, C. F., Ramírez-Esparza, N., R. Hamrick, L., Marklund, E., Kalashnikova, M., Guez, A., Casillas, M., Benetti, L., Alphen, P. V., \& Cristia, A. (2023). Everyday language input and production in 1,001 children from six continents. \emph{Proceedings of the National Academy of Sciences}, \emph{120}(52), e2300671120. \url{https://doi.org/10.1073/pnas.2300671120}
+
+\bibitem[\citeproctext]{ref-bernierExternalRegulationSelfRegulation2010}
+Bernier, A., Carlson, S. M., \& Whipple, N. (2010). From {External Regulation} to {Self-Regulation}: {Early Parenting Precursors} of {Young Children}'s {Executive Functioning}. \emph{Child Development}, \emph{81}(1), 326--339. \url{https://doi.org/10.1111/j.1467-8624.2009.01397.x}
+
+\bibitem[\citeproctext]{ref-bertasiusSpaceTimeAttentionAll2021}
+Bertasius, G., Wang, H., \& Torresani, L. (2021, June 9). \emph{Is {Space-Time Attention All You Need} for {Video Understanding}?} \url{https://doi.org/10.48550/arXiv.2102.05095}
+
+\bibitem[\citeproctext]{ref-blain-briuxe8reRoleExecutiveFunctions2014}
+Blain-Brière, B., Bouchard, C., \& Bigras, N. (2014). The role of executive functions in the pragmatic skills of children age 4â€``5. \emph{Frontiers in Psychology}, \emph{5}. \url{https://doi.org/10.3389/fpsyg.2014.00240}
+
+\bibitem[\citeproctext]{ref-bohnLanguageLearningOntogenetic2026}
+Bohn, M., \& Casillas, M. (2026, January). \emph{Language learning as ontogenetic adaptation}. \url{https://doi.org/10.1016/j.tics.2025.12.005}
+
+\bibitem[\citeproctext]{ref-bohnMealtimeConversationsParents2024}
+Bohn, M., Da Silva Vieira, W. F., Giner Torréns, M., Kärtner, J., Itakura, S., Cavalcante, L., Haun, D., Köster, M., \& Kanngiesser, P. (2024). Mealtime conversations between parents and their 2-year-old children in five cultural contexts. \emph{Developmental Psychology}, \emph{60}(7), 1255--1268. \url{https://doi.org/10.1037/dev0001688}
+
+\bibitem[\citeproctext]{ref-bohnackerStorytellingBilingualTurkishSwedish2022}
+Bohnacker, U., Lindgren, J., \& Öztekin, B. (2022). Storytelling in bilingual {Turkish-Swedish} children: {Effects} of language, age and exposure on narrative macrostructure. \emph{Linguistic Approaches to Bilingualism}, \emph{12}(4), 413--445. \url{https://doi.org/10.1075/lab.20057.boh}
+
+\bibitem[\citeproctext]{ref-bronfenbrennerEcologyHumanDevelopment2009}
+Bronfenbrenner, U. (1979). \emph{The ecology of human development: Experiments by nature and design}. Harvard university press.
+
+\bibitem[\citeproctext]{ref-brownFirstLanguageEarly1973}
+Brown, R. (1973). \emph{A first language; the early stages}. Allen \& Unwin.
+
+\bibitem[\citeproctext]{ref-buerknerAdvancedBayesian2017}
+Bürkner, P.-C. (2017). \emph{Advanced {Bayesian Multilevel Modeling} with the {R Package} brms}. \url{https://doi.org/10.48550/ARXIV.1705.11123}
+
+\bibitem[\citeproctext]{ref-butlerPreschoolersUseIntentional2012}
+Butler, L. P., \& Markman, E. M. (2012). Preschoolers {Use Intentional} and {Pedagogical Cues} to {Guide Inductive Inferences} and {Exploration}. \emph{Child Development}, \emph{83}(4), 1416--1428. \url{https://doi.org/10.1111/j.1467-8624.2012.01775.x}
+
+\bibitem[\citeproctext]{ref-canaultArticulationRate22026}
+Canault, M., Krzonowski, J., Anselme, R., \& Kern, S. (2026). Articulation {Rate Between} 2 and 4 {Years} of {Age} in {French Children}'s {Spontaneous Speech}. \emph{Journal of Speech, Language, and Hearing Research}, \emph{69}(6), 2397--2416. \url{https://doi.org/10.1044/2026_JSLHR-25-00507}
+
+\bibitem[\citeproctext]{ref-carpendaleConstructingUnderstanding2004}
+Carpendale, J. I. M., \& Lewis, C. (2004). Constructing an understanding of mind: {The} development of children's social understanding within social interaction. \emph{Behavioral and Brain Sciences}, \emph{27}(1), 79--96. \url{https://doi.org/10.1017/S0140525X04000032}
+
+\bibitem[\citeproctext]{ref-carpendaleWhatMakesUs2020}
+Carpendale, J., \& Lewis, C. (2020). \emph{What {Makes Us Human}: {How Minds Develop} through {Social Interactions}} (1st ed.). Routledge. \url{https://doi.org/10.4324/9781003125105}
+
+\bibitem[\citeproctext]{ref-casillasLearningLanguageVivo2023}
+Casillas, M. (2023). Learning language in vivo. \emph{Child Development Perspectives}, \emph{17}(1), 10--17. \url{https://doi.org/10.1111/cdep.12469}
+
+\bibitem[\citeproctext]{ref-casillasTurnTaking2016}
+Casillas, M., Bobb, S. C., \& Clark, E. V. (2016). Turn-taking, timing, and planning in early language acquisition. \emph{Journal of Child Language}, \emph{43}(6), 1310--1337. \url{https://doi.org/10.1017/S0305000915000689}
+
+\bibitem[\citeproctext]{ref-charlotBabyHuBERTMultilingualSelfSupervised2025}
+Charlot, T., Kunze, T., Poli, M., Cristia, A., Dupoux, E., \& Lavechin, M. (2025). \emph{{BabyHuBERT}: {Multilingual Self-Supervised Learning} for {Segmenting Speakers} in {Child-Centered Long-Form Recordings}}. \url{https://arxiv.org/abs/2509.15001}
+
+\bibitem[\citeproctext]{ref-cristaniHumanBehaviorAnalysis2013}
+Cristani, M., Raghavendra, R., Del Bue, A., \& Murino, V. (2013). Human behavior analysis in video surveillance: {A Social Signal Processing} perspective. \emph{Neurocomputing}, \emph{100}, 86--97. \url{https://doi.org/10.1016/j.neucom.2011.12.038}
+
+\bibitem[\citeproctext]{ref-daiLongitudinalDataCollection2022}
+Dai, S., Bouchet, H., Karsai, M., Chevrot, J.-P., Fleury, E., \& Nardy, A. (2022). Longitudinal data collection to follow social network and language development dynamics at preschool. \emph{Scientific Data}, \emph{9}(1), 777. \url{https://doi.org/10.1038/s41597-022-01756-x}
+
+\bibitem[\citeproctext]{ref-denhamPreschoolEmotional2003}
+Denham, S. A., Blair, K. A., DeMulder, E., Levitas, J., Sawyer, K., Auerbach--Major, S., \& Queenan, P. (2003). Preschool {Emotional Competence}: {Pathway} to {Social Competence}? \emph{Child Development}, \emph{74}(1), 238--256. \url{https://doi.org/10.1111/1467-8624.00533}
+
+\bibitem[\citeproctext]{ref-devineFamilyCorrelatesFalse2018}
+Devine, R. T., \& Hughes, C. (2018). Family {Correlates} of {False Belief Understanding} in {Early Childhood}: {A Meta-Analysis}. \emph{Child Development}, \emph{89}(3), 971--987. \url{https://doi.org/10.1111/cdev.12682}
+
+\bibitem[\citeproctext]{ref-donnellyLongitudinalRelationshipConversational2021}
+Donnelly, S., \& Kidd, E. (2021). The {Longitudinal Relationship Between Conversational Turn}‐{Taking} and {Vocabulary Growth} in {Early Language Development}. \emph{Child Development}, \emph{92}(2), 609--625. \url{https://doi.org/10.1111/cdev.13511}
+
+\bibitem[\citeproctext]{ref-ensorContentConnectednessMother2008}
+Ensor, R., \& Hughes, C. (2008). Content or {Connectedness}? {Mother}--{Child Talk} and {Early Social Understanding}. \emph{Child Development}, \emph{79}(1), 201--216. \url{https://doi.org/10.1111/j.1467-8624.2007.01120.x}
+
+\bibitem[\citeproctext]{ref-ferjanramuxedrezParentCoachingIncreases2020}
+Ferjan Ramírez, N., Lytle, S. R., \& Kuhl, P. K. (2020). Parent coaching increases conversational turns and advances infant language development. \emph{Proceedings of the National Academy of Sciences}, \emph{117}(7), 3484--3491. \url{https://doi.org/10.1073/pnas.1921653117}
+
+\bibitem[\citeproctext]{ref-fousheeActiveLearningLanguage2023}
+Foushee, R., Srinivasan, M., \& Xu, F. (2023). Active {Learning} in {Language Development}. \emph{Current Directions in Psychological Science}, \emph{32}(3), 250--257. \url{https://doi.org/10.1177/09637214221123920}
+
+\bibitem[\citeproctext]{ref-fukumuraDevelopmentAudienceDesign2016}
+Fukumura, K. (2016). Development of audience design in children with and without {ASD}. \emph{Developmental Psychology}, \emph{52}(1), 71--87. \url{https://doi.org/10.1037/dev0000064}
+
+\bibitem[\citeproctext]{ref-garonExecutiveFunction2008}
+Garon, N., Bryson, S. E., \& Smith, I. M. (2008). Executive function in preschoolers: {A} review using an integrative framework. \emph{Psychological Bulletin}, \emph{134}(1), 31--60. \url{https://doi.org/10.1037/0033-2909.134.1.31}
+
+\bibitem[\citeproctext]{ref-gilkersonMappingEarlyLanguage2017}
+Gilkerson, J., Richards, J. A., Warren, S. F., Montgomery, J. K., Greenwood, C. R., Kimbrough Oller, D., Hansen, J. H. L., \& Paul, T. D. (2017). Mapping the {Early Language Environment Using All-Day Recordings} and {Automated Analysis}. \emph{American Journal of Speech-Language Pathology}, \emph{26}(2), 248--265. \url{https://doi.org/10.1044/2016_AJSLP-15-0169}
+
+\bibitem[\citeproctext]{ref-gilkersonLanguageExperienceSecond2018}
+Gilkerson, J., Richards, J. A., Warren, S. F., Oller, D. K., Russo, R., \& Vohr, B. (2018). Language {Experience} in the {Second Year} of {Life} and {Language Outcomes} in {Late Childhood}. \emph{Pediatrics}, \emph{142}(4), e20174276. \url{https://doi.org/10.1542/peds.2017-4276}
+
+\bibitem[\citeproctext]{ref-ginsburgImportancePlayPromoting2007}
+Ginsburg, K. R., Committee on Communications, \& Committee on Psychosocial Aspects of Child and Family Health. (2007). The {Importance} of {Play} in {Promoting Healthy Child Development} and {Maintaining Strong Parent-Child Bonds}. \emph{Pediatrics}, \emph{119}(1), 182--191. \url{https://doi.org/10.1542/peds.2006-2697}
+
+\bibitem[\citeproctext]{ref-goffmanBehaviorPublicPlaces1969}
+Goffman, E. (1969). \emph{Behavior in public places: Notes on the social organization of gatherings} (4. print). Free Press {[}u.a.{]}.
+
+\bibitem[\citeproctext]{ref-gweonInferentialSocialLearning2021}
+Gweon, H. (2021). Inferential social learning: Cognitive foundations of human social learning and teaching. \emph{Trends in Cognitive Sciences}, \emph{25}(10), 896--910. \url{https://doi.org/10.1016/j.tics.2021.07.008}
+
+\bibitem[\citeproctext]{ref-hartleyMultipleViewGeometry2018}
+Hartley, R., \& Zisserman, A. (2018). \emph{Multiple view geometry in computer vision} (2. edition, 17.printing). Cambridge Univ. Press.
+
+\bibitem[\citeproctext]{ref-heyesCognitiveGadgetsCultural2018}
+Heyes, C. M. (2018). \emph{Cognitive gadgets: {The} cultural evolution of thinking}. Harvard University press.
+
+\bibitem[\citeproctext]{ref-hirsh-pasekContributionEarlyCommunication2015}
+Hirsh-Pasek, K., Adamson, L. B., Bakeman, R., Owen, M. T., Golinkoff, R. M., Pace, A., Yust, P. K. S., \& Suma, K. (2015). The {Contribution} of {Early Communication Quality} to {Low-Income Children}'s {Language Success}. \emph{Psychological Science}, \emph{26}(7), 1071--1083. \url{https://doi.org/10.1177/0956797615581493}
+
+\bibitem[\citeproctext]{ref-hoffHowSocialContexts2006}
+Hoff, E. (2006). How social contexts support and shape language development. \emph{Developmental Review}, \emph{26}(1), 55--88. \url{https://doi.org/10.1016/j.dr.2005.11.002}
+
+\bibitem[\citeproctext]{ref-jayaramanFacesInfantPerspectiveScenes2015}
+Jayaraman, S., Fausey, C. M., \& Smith, L. B. (2015). The {Faces} in {Infant-Perspective Scenes Change} over the {First Year} of {Life}. \emph{PLOS ONE}, \emph{10}(5), e0123780. \url{https://doi.org/10.1371/journal.pone.0123780}
+
+\bibitem[\citeproctext]{ref-kellerMythAttachmentTheory2021}
+Keller, H. (2021). \emph{The {Myth} of {Attachment Theory}: {A Critical Understanding} for {Multicultural Societies}} (1st ed.). Routledge. \url{https://doi.org/10.4324/9781003167099}
+
+\bibitem[\citeproctext]{ref-killickOptimalDetectionChangepoints2012}
+Killick, R., Fearnhead, P., \& Eckley, I. A. (2012). Optimal {Detection} of {Changepoints With} a {Linear Computational Cost}. \emph{Journal of the American Statistical Association}, \emph{107}(500), 1590--1598. \url{https://doi.org/10.1080/01621459.2012.737745}
+
+\bibitem[\citeproctext]{ref-koppAntecedentsSelfregulationDevelopmental1982}
+Kopp, C. B. (1982). Antecedents of self-regulation: {A} developmental perspective. \emph{Developmental Psychology}, \emph{18}(2), 199--214. \url{https://doi.org/10.1037/0012-1649.18.2.199}
+
+\bibitem[\citeproctext]{ref-kuxf6sterParentalTeachingBehavior2022}
+Köster, M., Torréns, M. G., Kärtner, J., Itakura, S., Cavalcante, L., \& Kanngiesser, P. (2022). Parental teaching behavior in diverse cultural contexts. \emph{Evolution and Human Behavior}, \emph{43}(5), 432--441. \url{https://doi.org/10.1016/j.evolhumbehav.2022.07.002}
+
+\bibitem[\citeproctext]{ref-kuhlSpeechLearningGated2007}
+Kuhl, P. K. (2007). Is speech learning {``gated''} by the social brain? \emph{Developmental Science}, \emph{10}(1), 110--120. \url{https://doi.org/10.1111/j.1467-7687.2007.00572.x}
+
+\bibitem[\citeproctext]{ref-kuhlEarlyLanguageLearning2014}
+Kuhl, P. K. (2014). Early {Language Learning} and the {Social Brain}. \emph{Cold Spring Harbor Symposia on Quantitative Biology}, \emph{79}, 211--220. \url{https://doi.org/10.1101/sqb.2014.79.024802}
+
+\bibitem[\citeproctext]{ref-kuhlBimodalPerceptionSpeech1982}
+Kuhl, P. K., \& Meltzoff, A. N. (1982). The {Bimodal Perception} of {Speech In Infancy}. \emph{Science}, \emph{218}(4577), 1138--1141. \url{https://doi.org/10.1126/science.7146899}
+
+\bibitem[\citeproctext]{ref-lalandUnderstandingHumanCognitive2021}
+Laland, K., \& Seed, A. (2021). Understanding {Human Cognitive Uniqueness}. \emph{Annual Review of Psychology}, \emph{72}(1), 689--716. \url{https://doi.org/10.1146/annurev-psych-062220-051256}
+
+\bibitem[\citeproctext]{ref-legareDevelopmentCumulativeCultural2019}
+Legare, C. H. (2019). The {Development} of {Cumulative Cultural Learning}. \emph{Annual Review of Developmental Psychology}, \emph{1}(1), 119--147. \url{https://doi.org/10.1146/annurev-devpsych-121318-084848}
+
+\bibitem[\citeproctext]{ref-levinsonPresumptiveMeaningsTheory2000}
+Levinson, S. C. (2000). \emph{Presumptive {Meanings}: {The Theory} of {Generalized Conversational Implicature}}. The MIT Press. \url{https://doi.org/10.7551/mitpress/5526.001.0001}
+
+\bibitem[\citeproctext]{ref-levinsonTurntakingHumanCommunication2016}
+Levinson, S. C. (2016). Turn-taking in {Human Communication} -- {Origins} and {Implications} for {Language Processing}. \emph{Trends in Cognitive Sciences}, \emph{20}(1), 6--14. \url{https://doi.org/10.1016/j.tics.2015.10.010}
+
+\bibitem[\citeproctext]{ref-lewisSocialInfluencesFalse1996}
+Lewis, C., Freeman, N. H., Kyriakidou, C., Maridaki-Kassotaki, K., \& Berridge, D. M. (1996). Social {Influences} on {False Belief Access}: {Specific Sibling Influences} or {General Apprenticeship}? \emph{Child Development}, \emph{67}(6), 2930. \url{https://doi.org/10.2307/1131760}
+
+\bibitem[\citeproctext]{ref-liChallengesTrendsEgocentric2025}
+Li, X., Qiu, H., Wang, L., Zhang, H., Qi, C., Han, L., Xiong, H., \& Li, H. (2025). \emph{Challenges and {Trends} in {Egocentric Vision}: {A Survey}}. \url{https://doi.org/10.48550/ARXIV.2503.15275}
+
+\bibitem[\citeproctext]{ref-liScreenDetectionEgocentric2026}
+Li, X., Shen, S., Hou, X., Gao, X., Huang, Z., Holiday, S. J., Cribbet, M. R., White, S. W., Sazonov, E., \& Gan, Y. (2026). \emph{Screen {Detection} from {Egocentric Image Streams Leveraging Multi-View Vision Language Model}}. \url{https://doi.org/10.1109/TMM.2026.3660180}
+
+\bibitem[\citeproctext]{ref-lindgrenDevelopmentNarrativeSkills2022}
+Lindgren, J. (2022). The development of narrative skills in monolingual {Swedish}-speaking children aged 4 to 9: A longitudinal study. \emph{Journal of Child Language}, \emph{49}(6), 1281--1294. \url{https://doi.org/10.1017/S030500092100057X}
+
+\bibitem[\citeproctext]{ref-lindsayPreschoolersOptimizeTiming2019}
+Lindsay, L., Gambi, C., \& Rabagliati, H. (2019). Preschoolers {Optimize} the {Timing} of {Their Conversational Turns Through Flexible Coordination} of {Language Comprehension} and {Production}. \emph{Psychological Science}, \emph{30}(4), 504--515. \url{https://doi.org/10.1177/0956797618822802}
+
+\bibitem[\citeproctext]{ref-liuVideoSwinTransformer2021}
+Liu, Z., Ning, J., Cao, Y., Wei, Y., Zhang, Z., Lin, S., \& Hu, H. (2021, June 24). \emph{Video {Swin Transformer}}. \url{https://doi.org/10.48550/arXiv.2106.13230}
+
+\bibitem[\citeproctext]{ref-longBabyViewDatasetHighresolution2024}
+Long, B., Xiang, V., Stojanov, S., Sparks, R. Z., Yin, Z., Keene, G. E., Tan, A. W. M., Feng, S. Y., Zhuang, C., Marchman, V. A., Yamins, D. L. K., \& Frank, M. C. (2024, June 14). \emph{The {BabyView} dataset: {High}-resolution egocentric videos of infants' and young children's everyday experiences} (2406.10447). \url{https://doi.org/10.48550/arXiv.2406.10447} (Pre-published)
+
+\bibitem[\citeproctext]{ref-mcalisterSiblingsTheoryMind2013}
+McAlister, A. R., \& Peterson, C. C. (2013). Siblings, {Theory} of {Mind}, and {Executive Functioning} in {Children Aged} 3--6 {Years}: {New Longitudinal Evidence}. \emph{Child Development}, \emph{84}(4), 1442--1458. \url{https://doi.org/10.1111/cdev.12043}
+
+\bibitem[\citeproctext]{ref-mcalisterLongitudinalStudyChild2007}
+McAlister, A., \& Peterson, C. (2007). A longitudinal study of child siblings and theory of mind development. \emph{Cognitive Development}, \emph{22}(2), 258--270. \url{https://doi.org/10.1016/j.cogdev.2006.10.009}
+
+\bibitem[\citeproctext]{ref-mcCormackChildrensFutureorientedCognition2020}
+McCormack, T., \& Hoerl, C. (2020). Children's future-oriented cognition. In \emph{Advances in {Child Development} and {Behavior}} (Vol. 58, pp. 215--253). Elsevier. \url{https://doi.org/10.1016/bs.acdb.2020.01.008}
+
+\bibitem[\citeproctext]{ref-mondadaChallengesMultimodalityLanguage2016}
+Mondada, L. (2016). Challenges of multimodality: {Language} and the body in social interaction. \emph{Journal of Sociolinguistics}, \emph{20}(3), 336--366. \url{https://doi.org/10.1111/josl.1_12177}
+
+\bibitem[\citeproctext]{ref-montroyDevelopmentSelfRegulation2016}
+Montroy, J. J., Bowles, R. P., Skibbe, L. E., McClelland, M. M., \& Morrison, F. J. (2016). The development of self-regulation across early childhood. \emph{Developmental Psychology}, \emph{52}(11), 1744--1762. \url{https://doi.org/10.1037/dev0000159}
+
+\bibitem[\citeproctext]{ref-morrongielloCaregiverSupervisionChildInjury2005}
+Morrongiello, B. A. (2005). Caregiver {Supervision} and {Child-Injury Risk}: {I}. {Issues} in {Defining} and {Measuring Supervision}; {II}. {Findings} and {Directions} for {Future Research}. \emph{Journal of Pediatric Psychology}, \emph{30}(7), 536--552. \url{https://doi.org/10.1093/jpepsy/jsi041}
+
+\bibitem[\citeproctext]{ref-ochsEthicalBlindSpots2020}
+Ochs, E., \& Kremer-Sadl, T. (2020). Ethical {Blind Spots} in {Ethnographic} and {Developmental Approaches} to the {Language Gap Debate}: \emph{Langage Et Société}, \emph{N° 170}(2), 39--67. \url{https://doi.org/10.3917/ls.170.0039}
+
+\bibitem[\citeproctext]{ref-ochsSchieffelinLanguageAcquisition1984}
+Ochs, E., \& Schieffelin, B. B. (1984). Language {Acquisition} and {Socialization}: {Three Developmental Stories}. In R. A. Shweder \& R. A. LeVine (Eds.), \emph{Culture {Theory}: {Essays} on {Mind}, {Self}, and {Emotion}} (Repr, pp. 276--320). Cambridge University Press.
+
+\bibitem[\citeproctext]{ref-onnelaUsingSociometersQuantify2014}
+Onnela, J.-P., Waber, B. N., Pentland, A., Schnorf, S., \& Lazer, D. (2014). Using sociometers to quantify social interaction patterns. \emph{Scientific Reports}, \emph{4}(1), 5604. \url{https://doi.org/10.1038/srep05604}
+
+\bibitem[\citeproctext]{ref-pancsofarMotherFatherLanguage2006}
+Pancsofar, N., \& Vernon-Feagans, L. (2006). Mother and father language input to young children: {Contributions} to later language development. \emph{Journal of Applied Developmental Psychology}, \emph{27}(6), 571--587. \url{https://doi.org/10.1016/j.appdev.2006.08.003}
+
+\bibitem[\citeproctext]{ref-pearsonVIIMathematicalContributions1896}
+Pearson, K. (1896). {VII}. {Mathematical} contributions to the theory of evolution.---{III}. {Regression}, heredity, and panmixia. \emph{Philosophical Transactions of the Royal Society of London. Series A, Containing Papers of a Mathematical or Physical Character}, (187), 253--318. \url{https://doi.org/10.1098/rsta.1896.0007}
+
+\bibitem[\citeproctext]{ref-pereiraBottomupViewToddler2014}
+Pereira, A. F., Smith, L. B., \& Yu, C. (2014). A bottom-up view of toddler word learning. \emph{Psychonomic Bulletin \& Review}, \emph{21}(1), 178--185. \url{https://doi.org/10.3758/s13423-013-0466-4}
+
+\bibitem[\citeproctext]{ref-pernerUnderstandingRepresentationalMind1993}
+Perner, J. (1993). \emph{Understanding the {Representational Mind}}. The MIT Press. \url{https://doi.org/10.7551/mitpress/6988.001.0001}
+
+\bibitem[\citeproctext]{ref-pernerEpisodicMemoryDevelopment2007}
+Perner, J., Kloo, D., \& Gornik, E. (2007). Episodic memory development: Theory of mind is part of re‐experiencing experienced events. \emph{Infant and Child Development}, \emph{16}(5), 471--490. \url{https://doi.org/10.1002/icd.517}
+
+\bibitem[\citeproctext]{ref-pernerTheoryMindContagious1994}
+Perner, J., Ruffman, T., \& Leekam, S. R. (1994). Theory of {Mind Is Contagious}: {You Catch It} from {Your Sibs}. \emph{Child Development}, \emph{65}(4), 1228. \url{https://doi.org/10.2307/1131316}
+
+\bibitem[\citeproctext]{ref-PetersonDevelopmentPsycholinguistics1983}
+Peterson, C., \& McCabe, A. (1983). \emph{Developmental {Psycholinguistics}: {Three Ways} of {Looking} at a {Child}'s {Narrative}}. Springer. \url{https://doi.org/10.1007/978-1-4757-0608-6}
+
+\bibitem[\citeproctext]{ref-piagetPartCognitiveDevelopment1964}
+Piaget, J. (1964). Part {I}: {Cognitive} development in children: {Piaget} development and learning. \emph{Journal of Research in Science Teaching}, \emph{2}(3), 176--186. \url{https://doi.org/10.1002/tea.3660020306}
+
+\bibitem[\citeproctext]{ref-quamDevelopmentChildrensInterpretation2012}
+Quam, C., \& Swingley, D. (2012). Development in {Children}'s {Interpretation} of {Pitch Cues} to {Emotions}. \emph{Child Development}, \emph{83}(1), 236--250. \url{https://doi.org/10.1111/j.1467-8624.2011.01700.x}
+
+\bibitem[\citeproctext]{ref-ramachandramDeepMultimodalLearning2017}
+Ramachandram, D., \& Taylor, G. W. (2017). Deep {Multimodal Learning}: {A Survey} on {Recent Advances} and {Trends}. \emph{IEEE Signal Processing Magazine}, \emph{34}(6), 96--108. \url{https://doi.org/10.1109/MSP.2017.2738401}
+
+\bibitem[\citeproctext]{ref-rijsbergenInformationRetrieval1980}
+Rijsbergen, C. J. van. (1980). \emph{Information retrieval} (2. ed., reprint). Butterworths.
+
+\bibitem[\citeproctext]{ref-rogoffCulturalNature2003}
+Rogoff, B. (2003). \emph{The cultural nature of human development.} (pp. xiii, 434). Oxford University Press.
+
+\bibitem[\citeproctext]{ref-rogoffImportanceUnderstandingChildrens2018}
+Rogoff, B., Dahl, A., \& Callanan, M. (2018). The importance of understanding children's lived experience. \emph{Developmental Review}, \emph{50}, 5--15. \url{https://doi.org/10.1016/j.dr.2018.05.006}
+
+\bibitem[\citeproctext]{ref-rogoffFirsthandLearningIntent2003}
+Rogoff, B., Paradise, R., Arauz, R. M., Correa-Chávez, M., \& Angelillo, C. (2003). Firsthand {Learning Through Intent Participation}. \emph{Annual Review of Psychology}, \emph{54}(1), 175--203. \url{https://doi.org/10.1146/annurev.psych.54.101601.145118}
+
+\bibitem[\citeproctext]{ref-romeo30MillionWordGapChildrens2018}
+Romeo, R. R., Leonard, J. A., Robinson, S. T., West, M. R., Mackey, A. P., Rowe, M. L., \& Gabrieli, J. D. E. (2018). Beyond the 30-{Million-Word Gap}: {Children}'s {Conversational Exposure Is Associated With Language-Related Brain Function}. \emph{Psychological Science}, \emph{29}(5), 700--710. \url{https://doi.org/10.1177/0956797617742725}
+
+\bibitem[\citeproctext]{ref-rossanoHow24yearold2022}
+Rossano, F., Terwilliger, J., Bangerter, A., Genty, E., Heesen, R., \& Zuberbühler, K. (2022). How 2- and 4-year-old children coordinate social interactions with peers. \emph{Philosophical Transactions of the Royal Society B: Biological Sciences}, \emph{377}(1859), 20210100. \url{https://doi.org/10.1098/rstb.2021.0100}
+
+\bibitem[\citeproctext]{ref-roweLongitudinalInvestigationRole2012}
+Rowe, M. L. (2012). A {Longitudinal Investigation} of the {Role} of {Quantity} and {Quality} of {Child-Directed Speech} in {Vocabulary Development}. \emph{Child Development}, \emph{83}(5), 1762--1774. \url{https://doi.org/10.1111/j.1467-8624.2012.01805.x}
+
+\bibitem[\citeproctext]{ref-roweDifferencesEarlyGesture2009}
+Rowe, M. L., \& Goldin-Meadow, S. (2009). Differences in {Early Gesture Explain SES Disparities} in {Child Vocabulary Size} at {School Entry}. \emph{Science}, \emph{323}(5916), 951--953. \url{https://doi.org/10.1126/science.1167025}
+
+\bibitem[\citeproctext]{ref-rowlandConstructingLanguageFramework2026}
+Rowland, C. F., Westermann, G., Theakston, A. L., Pine, J. M., Monaghan, P., \& Lieven, E. V. M. (2026). Constructing language: A framework for explaining acquisition. \emph{Trends in Cognitive Sciences}, \emph{30}(1), 26--39. \url{https://doi.org/10.1016/j.tics.2025.05.015}
+
+\bibitem[\citeproctext]{ref-royPredictingBirthSpoken2015}
+Roy, B. C., Frank, M. C., DeCamp, P., Miller, M., \& Roy, D. (2015). Predicting the birth of a spoken word. \emph{Proceedings of the National Academy of Sciences}, \emph{112}(41), 12663--12668. \url{https://doi.org/10.1073/pnas.1419773112}
+
+\bibitem[\citeproctext]{ref-rubio-sandovalIndoorNavigationMethodology2021}
+Rubio-Sandoval, J. I., Martinez-Rodriguez, J. L., Lopez-Arevalo, I., Rios-Alvarado, A. B., Rodriguez-Rodriguez, A. J., \& Vargas-Requena, D. T. (2021). An {Indoor Navigation Methodology} for {Mobile Devices} by {Integrating Augmented Reality} and {Semantic Web}. \emph{Sensors}, \emph{21}(16), 5435. \url{https://doi.org/10.3390/s21165435}
+
+\bibitem[\citeproctext]{ref-rudasillChildTemperamentTeacher2011}
+Rudasill, K. M. (2011). Child temperament, teacher--child interactions, and teacher--child relationships: {A} longitudinal investigation from first to third grade. \emph{Early Childhood Research Quarterly}, \emph{26}(2), 147--156. \url{https://doi.org/10.1016/j.ecresq.2010.07.002}
+
+\bibitem[\citeproctext]{ref-ruffDevelopmentAttentionDistractibility2003}
+Ruff, H. A., \& Capozzoli, M. C. (2003). Development of attention and distractibility in the first 4 years of life. \emph{Developmental Psychology}, \emph{39}(5), 877--890. \url{https://doi.org/10.1037/0012-1649.39.5.877}
+
+\bibitem[\citeproctext]{ref-sameroffTransactionalModel2009}
+Sameroff, A. (2009). The transactional model. In A. Sameroff (Ed.), \emph{The transactional model of development: {How} children and contexts shape each other.} (pp. 3--21). American Psychological Association. \url{https://doi.org/10.1037/11877-001}
+
+\bibitem[\citeproctext]{ref-shahaeianCulturalFamilyInfluences2014}
+Shahaeian, A., Nielsen, M., Peterson, C. C., \& Slaughter, V. (2014). Cultural and {Family Influences} on {Children}'s {Theory} of {Mind Development}: {A Comparison} of {Australian} and {Iranian School-Age Children}. \emph{Journal of Cross-Cultural Psychology}, \emph{45}(4), 555--568. \url{https://doi.org/10.1177/0022022113513921}
+
+\bibitem[\citeproctext]{ref-shatzDevelopmentCommunication1973}
+Shatz, M., \& Gelman, R. (1973). The {Development} of {Communication Skills}: {Modifications} in the {Speech} of {Young Children} as a {Function} of {Listener}. \emph{Monographs of the Society for Research in Child Development}, \emph{38}(5), 1. \url{https://doi.org/10.2307/1165783}
+
+\bibitem[\citeproctext]{ref-simonyanVeryDeepConvolutional2014}
+Simonyan, K., \& Zisserman, A. (2014). \emph{Very {Deep Convolutional Networks} for {Large-Scale Image Recognition}}. \url{https://doi.org/10.48550/ARXIV.1409.1556}
+
+\bibitem[\citeproctext]{ref-smithDevelopingInfantCreates2018}
+Smith, L. B., Jayaraman, S., Clerkin, E., \& Yu, C. (2018). The {Developing Infant Creates} a {Curriculum} for {Statistical Learning}. \emph{Trends in Cognitive Sciences}, \emph{22}(4), 325--336. \url{https://doi.org/10.1016/j.tics.2018.02.004}
+
+\bibitem[\citeproctext]{ref-suffoChildLensEgocentricVideo2026}
+Suffo, N.-P., Martin, P.-E., Suffo, A., Haun, D., \& Bohn, M. (2026). {ChildLens}: {An} egocentric video dataset for activity analysis in children. \emph{Behavior Research Methods}, \emph{58}(5), 115. \url{https://doi.org/10.3758/s13428-026-02982-6}
+
+\bibitem[\citeproctext]{ref-sullivanSAYCamLargeLongitudinal2021}
+Sullivan, J., Mei, M., Perfors, A., Wojcik, E., \& Frank, M. C. (2021). {SAYCam}: {A Large}, {Longitudinal Audiovisual Dataset Recorded From} the {Infant}'s {Perspective}. \emph{Open Mind}, \emph{5}, 20--29. \url{https://doi.org/10.1162/opmi_a_00039}
+
+\bibitem[\citeproctext]{ref-tanAssessingAlignmentInfants2025}
+Tan, A. W. M., Yang, J., Sepuri, T., Aw, K. L., Sparks, R. Z., Yin, Z., Marchman, V. A., Frank, M. C., \& Long, B. (2025). \emph{Assessing the alignment between infants' visual and linguistic experience using multimodal language models}. \url{https://doi.org/10.48550/ARXIV.2511.18824}
+
+\bibitem[\citeproctext]{ref-taumoepeauSteppingStonesOthers2008}
+Taumoepeau, M., \& Ruffman, T. (2008). Stepping {Stones} to {Others}' {Minds}: {Maternal Talk Relates} to {Child Mental State Language} and {Emotion Understanding} at 15, 24, and 33 {Months}. \emph{Child Development}, \emph{79}(2), 284--302. \url{https://doi.org/10.1111/j.1467-8624.2007.01126.x}
+
+\bibitem[\citeproctext]{ref-rCoreTeamLanguage2020}
+Team, R. C. (2020). \emph{R: {A Language} and {Environment} for {Statistical Computing}} {[}Computer software{]}. R Foundation for Statistical Computing. \url{https://www.R-project.org/}
+
+\bibitem[\citeproctext]{ref-tianYOLOv12AttentionCentricRealTime2025}
+Tian, Y., Ye, Q., \& Doermann, D. (2025). \emph{{YOLOv12}: {Attention-Centric Real-Time Object Detectors}}. \url{https://doi.org/10.48550/ARXIV.2502.12524}
+
+\bibitem[\citeproctext]{ref-tomaselloConstructingLanguageUsageBased2005}
+Tomasello, M. (2005). \emph{Constructing a {Language}: {A Usage-Based Theory} of {Language Acquisition}}. Harvard University Press. \url{https://doi.org/10.2307/j.ctv26070v8}
+
+\bibitem[\citeproctext]{ref-tomaselloCulturalOriginsHuman2009}
+Tomasello, M. (2009). \emph{Cultural {Origins} of {Human Cognition}}. Harvard University Press.
+
+\bibitem[\citeproctext]{ref-tomaselloBecomingHumanTheory2019}
+Tomasello, M. (2019). \emph{Becoming {Human}: {A Theory} of {Ontogeny}}. Harvard University Press. \url{https://doi.org/10.4159/9780674988651}
+
+\bibitem[\citeproctext]{ref-tompkinsRelationParentsMental2018}
+Tompkins, V., Benigno, J. P., Kiger Lee, B., \& Wright, B. M. (2018). The relation between parents' mental state talk and children's social understanding: {A} meta‐analysis. \emph{Social Development}, \emph{27}(2), 223--246. \url{https://doi.org/10.1111/sode.12280}
+
+\bibitem[\citeproctext]{ref-vandamConversationInitiationMothers2022}
+VanDam, M., Thompson, L., Wilson-Fowler, E., Campanella, S., Wolfenstein, K., \& De Palma, P. (2022). Conversation {Initiation} of {Mothers}, {Fathers}, and {Toddlers} in their {Natural Home Environment}. \emph{Computer Speech \& Language}, \emph{73}, 101338. \url{https://doi.org/10.1016/j.csl.2021.101338}
+
+\bibitem[\citeproctext]{ref-vongGroundedLanguageAcquisition2024}
+Vong, W. K., Wang, W., Orhan, A. E., \& Lake, B. M. (2024). Grounded language acquisition through the eyes and ears of a single child. \emph{Science}, \emph{383}(6682), 504--511. \url{https://doi.org/10.1126/science.adi1374}
+
+\bibitem[\citeproctext]{ref-vygotskyMindSocietyDevelopment1978}
+Vygotsky, L. S. (1978). \emph{Mind in {Society}: {The Development} of {Higher Psychological Processes}}. Harvard University Press.
+
+\bibitem[\citeproctext]{ref-weislederFernaldTalkingMatters2013}
+Weisleder, A., \& Fernald, A. (2013). Talking to {Children Matters}: {Early Language Experience Strengthens Processing} and {Builds Vocabulary}. \emph{Psychological Science}, \emph{24}(11), 2143--2152. \url{https://doi.org/10.1177/0956797613488145}
+
+\bibitem[\citeproctext]{ref-wellmannMetaAnalysis2001}
+Wellman, H. M., Cross, D., \& Watson, J. (2001). Meta-{Analysis} of {Theory}-of-{Mind Development}: {The Truth} about {False Belief}. \emph{Child Development}, \emph{72}(3), 655--684. \url{https://doi.org/10.1111/1467-8624.00304}
+
+\bibitem[\citeproctext]{ref-wengArtificialIntelligencePowered2025}
+Weng, Z., Bravo-Sánchez, L., Wang, Z., Howard, C., Xenochristou, M., Meister, N., Kanazawa, A., Milstein, A., Bergelson, E., Humphreys, K. L., Sanders, L. M., \& Yeung-Levy, S. (2025). Artificial intelligence--powered {3D} analysis of video-based caregiver-child interactions. \emph{Science Advances}, \emph{11}(8), eadp4422. \url{https://doi.org/10.1126/sciadv.adp4422}
+
+\bibitem[\citeproctext]{ref-wimmerBeliefsBeliefsRepresentation1983}
+Wimmer, H. (1983). Beliefs about beliefs: {Representation} and constraining function of wrong beliefs in young children's understanding of deception. \emph{Cognition}, \emph{13}(1), 103--128. \url{https://doi.org/10.1016/0010-0277(83)90004-5}
+
+\bibitem[\citeproctext]{ref-yangQuantifyingInfantsEveryday2025}
+Yang, J., Sepuri, T., Tan, A. W. M., Frank, M. C., \& Long, B. (2025, June 19). \emph{Quantifying infants' everyday experiences with objects in a large corpus of egocentric videos}. \url{https://doi.org/10.31234/osf.io/jqmf3_v1}
+
+\bibitem[\citeproctext]{ref-yuRapidWordLearning2007}
+Yu, C., \& Smith, L. B. (2007). Rapid {Word Learning Under Uncertainty} via {Cross-Situational Statistics}. \emph{Psychological Science}, \emph{18}(5), 414--420. \url{https://doi.org/10.1111/j.1467-9280.2007.01915.x}
+
+\bibitem[\citeproctext]{ref-yuSocialOriginsSustained2016}
+Yu, C., \& Smith, L. B. (2016). The {Social Origins} of {Sustained Attention} in {One-Year-Old Human Infants}. \emph{Current Biology}, \emph{26}(9), 1235--1240. \url{https://doi.org/10.1016/j.cub.2016.03.026}
+
+\bibitem[\citeproctext]{ref-zelazoDimensionalChangeCard2006}
+Zelazo, P. D. (2006). The {Dimensional Change Card Sort} ({DCCS}): A method of assessing executive function in children. \emph{Nature Protocols}, \emph{1}(1), 297--301. \url{https://doi.org/10.1038/nprot.2006.46}
+
+\bibitem[\citeproctext]{ref-zhuangUnsupervisedNeuralNetwork2021}
+Zhuang, C., Yan, S., Nayebi, A., Schrimpf, M., Frank, M. C., DiCarlo, J. J., \& Yamins, D. L. K. (2021). Unsupervised neural network models of the ventral visual stream. \emph{Proceedings of the National Academy of Sciences}, \emph{118}(3), e2014196118. \url{https://doi.org/10.1073/pnas.2014196118}
+
+\end{CSLReferences}
+
+\endgroup
+
+
+\end{document}

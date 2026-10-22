@@ -3,7 +3,7 @@ import sqlite3
 import re
 from pathlib import Path
 from typing import Set
-from config import DataConfig
+from src.config import DataConfig
 
 def get_video_id(video_name: str, cursor: sqlite3.Cursor) -> int:
     """Get video_id from Videos table using video name

@@ -3,7 +3,11 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from typing import List, Tuple
+<<<<<<< Updated upstream
 from constants import AudioClassification
+=======
+from src.constants import AudioClassification
+>>>>>>> Stashed changes
 
 def create_second_level_labels(segments_df: pd.DataFrame, 
                                video_duration_seconds: int) -> np.ndarray:

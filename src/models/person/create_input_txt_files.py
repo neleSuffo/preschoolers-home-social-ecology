@@ -14,8 +14,8 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
-from constants import DataPaths, BasePaths, PersonDetection, PersonClassification
-from config import PersonConfig, DataConfig
+from src.constants import DataPaths, BasePaths, PersonDetection, PersonClassification
+from src.config import PersonConfig, DataConfig
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

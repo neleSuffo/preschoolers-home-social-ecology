@@ -1,0 +1,47 @@
+ANALYSIS SUMMARY
+======================================================================
+Total seconds analyzed: 104,508
+Total time analyzed: 29.03 hours
+
+OVERALL PERFORMANCE METRICS (Macro Average)
+======================================================================
+Accuracy (second-level):  0.6656
+Cohen's Kappa (κ):        0.4611
+Macro Average Precision:  0.6495
+Macro Average Recall:     0.6584
+Macro Average F1-Score:   0.6471
+Macro Average Kappa:      0.4611
+
+CATEGORY-SPECIFIC PERFORMANCE
+======================================================================
+
+INTERACTING:
+  Total seconds (GT): 56,447
+  Accuracy (second-level): 0.6753
+  Precision: 0.8365
+  Recall: 0.6753
+  F1-Score: 0.7473
+  True Positives: 38,121
+  False Positives: 7,449
+  False Negatives: 18,326
+
+AVAILABLE:
+  Total seconds (GT): 30,771
+  Accuracy (second-level): 0.6647
+  Precision: 0.4984
+  Recall: 0.6647
+  F1-Score: 0.5697
+  True Positives: 20,455
+  False Positives: 20,589
+  False Negatives: 10,316
+
+ALONE:
+  Total seconds (GT): 17,290
+  Accuracy (second-level): 0.6352
+  Precision: 0.6137
+  Recall: 0.6352
+  F1-Score: 0.6243
+  True Positives: 10,982
+  False Positives: 6,912
+  False Negatives: 6,308
+

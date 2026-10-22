@@ -31,8 +31,13 @@ from typing import List, Dict, Tuple
 src_path = Path(__file__).parent.parent.parent if '__file__' in globals() else Path.cwd().parent.parent
 sys.path.append(str(src_path))
 
+<<<<<<< Updated upstream
 from constants import Analysis, DataPaths
 from config import AnalysisConfig, DataConfig
+=======
+from src.constants import Analysis, DataPaths
+from src.config import AnalysisConfig, DataConfig
+>>>>>>> Stashed changes
 
 # Configure logging format
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

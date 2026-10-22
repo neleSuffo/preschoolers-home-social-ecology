@@ -2,8 +2,13 @@ import argparse
 import pandas as pd
 import numpy as np
 from pathlib import Path
+<<<<<<< Updated upstream
 from constants import Analysis
 from utils import parse_rttm, merge_overlapping_intervals, get_child_fold_boundaries
+=======
+from src.constants import Analysis
+from src.research_questions.utils import parse_rttm, merge_overlapping_intervals, get_child_fold_boundaries
+>>>>>>> Stashed changes
 
 def main(
     output_folder: Path = None,

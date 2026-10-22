@@ -4,7 +4,7 @@ import os
 import logging
 import argparse
 from pathlib import Path
-from constants import Analysis
+from src.constants import Analysis
 
 # Configure basic logging for the runner
 logging.basicConfig(level=logging.INFO, format='%(message)s')

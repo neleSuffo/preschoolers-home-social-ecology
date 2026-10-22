@@ -4,8 +4,8 @@ import shutil
 import argparse
 from datetime import datetime
 from ultralytics import YOLO
-from constants import PersonDetection, PersonClassification 
-from config import PersonConfig
+from src.constants import PersonDetection, PersonClassification 
+from src.config import PersonConfig
 
 def get_data_constants(data_type: str):
     """Returns the correct constants object based on the data_type flag.

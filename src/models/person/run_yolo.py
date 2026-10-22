@@ -9,7 +9,7 @@ from PIL import Image
 from supervision import Detections
 from ultralytics import YOLO
 
-from constants import PersonDetection
+from src.constants import PersonDetection
 
 # Configure logging
 logging.basicConfig(

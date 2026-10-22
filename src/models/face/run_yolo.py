@@ -7,8 +7,8 @@ from ultralytics import YOLO
 from supervision import Detections
 from pathlib import Path
 from PIL import Image
-from constants import FaceDetection
-from models.proximity.estimate_proximity import calculate_proximity
+from src.constants import FaceDetection
+from src.models.proximity.estimate_proximity import calculate_proximity
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

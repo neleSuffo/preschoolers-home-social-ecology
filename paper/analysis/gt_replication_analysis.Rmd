@@ -1,0 +1,1003 @@
+---
+title: "Preschool Social Ecology Results"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(brms)
+library(ggpubr)
+library(tidyboot)
+library(tidybayes)
+library(ggthemes)
+library(dplyr)
+library(ggplot2)
+library(readr)
+library(lubridate)
+library(ggtext)
+library(cowplot)
+library(emmeans)
+```
+
+# How much time do children spend in different social states?
+```{r load segments data}
+segments_data_gt <- read_csv("data/interaction_segments_final_gt.csv")  %>%
+  mutate(child_id = as.character(child_id)) %>%
+  mutate(
+    age = as.numeric(scale(age_at_recording)),
+    interaction_type = factor(
+      interaction_type,
+      levels = c("Alone", "Available", "Interacting")
+    )
+  )
+
+# Process for plotting points: One value per child per social state
+segments_data_p_gt <- segments_data_gt %>%
+  group_by(child_id) %>%
+  #Calculate total seconds recorded for the child across ALL states
+  mutate(child_total_sec = sum(duration_sec, na.rm = TRUE)) %>%
+  group_by(child_id, interaction_type) %>%
+  summarise(
+    # Total duration for this child in minutes (for point size)
+    duration = max(child_total_sec) / 60,
+    # Proportion: (Sum of seconds in THIS state) / (Total seconds for THIS child)
+    prop = sum(duration_sec) / max(child_total_sec),
+    # Age at first recording
+    age_at_recording = min(age_at_recording, na.rm = TRUE),
+    .groups = "drop"
+    )
+```
+
+```{r run segments model}
+bm_segments_gt <- brm(
+  interaction_type | weights(duration_sec,scale = TRUE) ~ age + (1 | child_id),
+  family = categorical(),
+  data = segments_data_gt,
+  cores = 4,
+  chains = 4,
+  threads = threading(3), 
+  control = list(adapt_delta = 0.95, max_treedepth = 20),
+  iter = 8000,
+  backend = "cmdstanr"
+)
+```
+
+```{r prepare segments plotting}
+ndata_segments_gt <- expand_grid(
+  age_at_recording = seq(min(segments_data_gt$age_at_recording), 
+                         max(segments_data_gt$age_at_recording), 
+                         length.out = 100),
+  interaction_type = levels(segments_data_gt$interaction_type)
+) %>%
+  mutate(
+    age = (age_at_recording - mean(segments_data_gt$age_at_recording, na.rm = TRUE)) / 
+          sd(segments_data_gt$age_at_recording, na.rm = TRUE)
+  )
+
+post_segments_gt <- fitted(bm_segments_gt, newdata = ndata_segments_gt, re_formula = NA) %>%
+  # Convert the predictions into a tibble for easier manipulation
+  as_tibble() %>%
+  # Add the ndata columns (age, age_at_recording, category) alongside predictions
+  bind_cols(ndata_segments_gt) %>%
+  select(-interaction_type) %>%
+  pivot_longer(
+    cols = c(contains("P(Y = ")),
+    names_to = "category2",
+    values_to = "estimate"
+  ) %>%
+  separate(category2, into = c("type", "interaction_type"), sep = " = ") %>%
+  mutate(interaction_type = str_remove(interaction_type, "\\)"),
+         type = recode(type,
+           "Estimate.P(Y"    = "estimate",
+           "Est.Error.P(Y"   = "est.error",
+           "Q2.5.P(Y"        = "lci",
+           "Q97.5.P(Y"       = "uci"
+         )) %>%
+  
+  distinct(age_at_recording, type, interaction_type, .keep_all = TRUE) %>%
+  pivot_wider(names_from = type, values_from = estimate)
+```
+
+```{r plot segments model}
+p_00_gt <- ggplot() +
+  # Raw data points (using size for duration as in the original)
+  geom_point(data = segments_data_p_gt, aes(x = age_at_recording, y = prop, size = duration, col = interaction_type), alpha = 0.35) +
+  geom_ribbon(data = post_segments_gt, aes(x = age_at_recording, ymin = lci, ymax = uci, fill = interaction_type), alpha = 0.1) +
+  geom_line(data = post_segments_gt, aes(x = age_at_recording, y = estimate, col = interaction_type), linewidth = 1) +
+  scale_y_continuous(labels = scales::label_percent(), limits = c(0, 1)) +
+  scale_color_manual(name = "Social State", values = c("Alone" = "#69777B", "Available" = "#8E7C3B", "Interacting" = "#691633")) +
+  scale_fill_manual(name = "Social State", values = c("Alone" = "#69777B", "Available" = "#8E7C3B", "Interacting" = "#691633")) +
+  scale_size(name = "Total recording\nduration (in min)") +
+  guides(
+    size = guide_legend(order = 1),
+    color = guide_legend(order = 2),
+    fill = guide_legend(order = 2)
+  ) +
+  ylab("Time spent in Social State (%)") +
+  xlab("Age (Years)") +
+  theme_minimal()
+
+p_00_gt
+```
+
+```{r segment model summary}
+summary(bm_segments_gt)
+```
+
+# How much speech does the key child produce?
+## Part 1
+```{r loads kcs data}
+kcs_data_gt <- read_csv("data/analysis_20261018_221629_second_submission/02_kcs_summary_gt.csv") %>%
+  mutate(child_id = as.character(child_id)) %>%
+  #filter(!child_id %in% excluded_outlier_ids) %>%
+  mutate(
+    age = as.numeric(scale(age_at_recording)),
+    speech_activity_percent = pmin(pmax(speech_activity_percent, 0), 1)
+  )
+
+# Process for plotting points: One value per child and social state
+kcs_data_p_gt <- kcs_data_gt %>%
+  # Calculate absolute speech minutes per segment
+  mutate(speech_minutes = speech_activity_percent * segment_duration_minutes) %>%
+  group_by(child_id, interaction_type) %>%
+  summarize(
+    # Get the age of the first recording for this child
+    age_at_recording = min(age_at_recording),
+    # Sum total duration and total speech minutes
+    total_segment_minutes = sum(segment_duration_minutes),
+    total_speech_minutes = sum(kchi_speech_minutes, na.rm = TRUE),
+    # Calculate the aggregate percentage for the child in this state
+    total_speech_activity = total_speech_minutes / total_segment_minutes,
+    .groups = "drop"
+  )
+```
+
+```{r Check data distribution}
+ggplot(kcs_data_gt, aes(x = speech_activity_percent)) +
+  geom_histogram(bins = 50, fill = "#691633", color = "white") +
+  labs(title = "Distribution of Key Child Speech",
+       subtitle = "Looking for spikes at 0 (silence) and 1 (continuous speech)",
+       x = "Speech Activity (%)", y = "Frequency (Segments)") +
+  theme_minimal()
+```
+
+
+```{r run kcs model}
+bm_kcs_gt <- brm(
+  speech_activity_percent | weights(segment_duration_minutes,scale = TRUE)  ~ age * interaction_type + (1 + interaction_type | child_id),
+  data = kcs_data_gt,
+  family = zero_one_inflated_beta(),
+  backend = "cmdstanr",
+  init = 0,
+  chains = 4,
+  iter = 8000,
+  cores = 4,
+  threads = threading(8), 
+  control = list(adapt_delta = 0.95, max_treedepth = 20),
+)
+```
+
+```{r prepare kcs plotting}
+ndata_kcs_gt <- expand_grid(
+  age_at_recording = seq(min(kcs_data_gt$age_at_recording), 
+                         max(kcs_data_gt$age_at_recording), 
+                         length.out = 100),
+  interaction_type = levels(factor(kcs_data_gt$interaction_type))
+) %>%
+  mutate(
+    age = (age_at_recording - mean(kcs_data_gt$age_at_recording, na.rm = TRUE)) / 
+          sd(kcs_data_gt$age_at_recording, na.rm = TRUE)
+  )
+
+post_kcs_gt <- fitted(bm_kcs_gt, newdata = ndata_kcs_gt, re_formula = NA)%>%
+  as_tibble() %>%
+  bind_cols(ndata_kcs_gt)
+```
+
+```{r plot kcs model}
+p_01_gt <- ggplot() +
+  # Raw data points
+  geom_point(data = kcs_data_p_gt, aes(x = age_at_recording, y = total_speech_activity, size = total_segment_minutes, col = interaction_type), alpha = 0.35) +
+  geom_ribbon(data = post_kcs_gt, aes(x = age_at_recording, ymin = Q2.5, ymax = Q97.5, fill = interaction_type), alpha = 0.1) +
+  geom_line(data = post_kcs_gt, aes(x = age_at_recording, y = Estimate, col = interaction_type), linewidth = 1) +
+  scale_y_continuous(labels = scales::label_percent(), limits = c(0, 1)) +
+  scale_color_manual(name = "Social State", values = c("Alone" = "#69777B", "Available" = "#8E7C3B", "Interacting" = "#691633")) +
+  scale_fill_manual(name = "Social State", values = c("Alone" = "#69777B", "Available" = "#8E7C3B", "Interacting" = "#691633")) +
+  scale_size(name = "Total recording\nduration (in min)") +
+  guides(
+    size = guide_legend(order = 1),
+    color = guide_legend(order = 2),
+    fill = guide_legend(order = 2)
+  ) +
+  ylab("Key Child Speech (%)") +
+  xlab("Age (Years)") +
+  theme_minimal()
+p_01_gt
+```
+
+```{r kcs model summary}
+summary(bm_kcs_gt)
+```
+## Part 2
+```{r load absolute kcs data}
+kcs_glob_data_gt <- read_csv("data/analysis_20261018_221629_second_submission/02a_global_kcs_summary_gt.csv") %>%
+  mutate(
+    child_id = as.character(child_id),
+    age = as.numeric(scale(age_at_recording)),
+    speech_activity_percent = pmin(pmax(speech_activity_percent, 0), 1))
+
+# Add scaled age to the plotting points dataframe
+kcs_glob_data_p_gt <- kcs_glob_data_gt
+```
+
+```{r check data distribution}
+ggplot(kcs_glob_data_gt, aes(x = speech_activity_percent)) +
+  geom_density(fill = "#691633", alpha = 0.3) +
+  geom_histogram(aes(y = ..density..), bins = 20, fill = "#691633", color = "white", alpha = 0.7) +
+  labs(x = "Global Speech Activity (%)", y = "Density") +
+  theme_minimal()
+```
+
+```{r run kcs_glob model}
+bm_glob_kcs_gt <- brm(
+  speech_activity_percent | weights(total_recording_minutes) ~ age,
+  family = Beta(),
+  data = kcs_glob_data_gt,
+  cores = 4, 
+  chains = 4,
+  iter = 8000,
+  backend = "cmdstanr"
+)
+```
+
+```{r prepare kcs_glob plotting}
+# Create a smooth range of ages for the prediction line
+ndata_kcs_glob_data_gt <- tibble(
+  age_at_recording = seq(min(kcs_glob_data_gt$age_at_recording), 
+                         max(kcs_glob_data_gt$age_at_recording), 
+                         length.out = 100)
+) %>%
+  mutate(
+    age = (age_at_recording - mean(kcs_glob_data_gt$age_at_recording, na.rm = TRUE)) / 
+          sd(kcs_glob_data_gt$age_at_recording, na.rm = TRUE)
+  )
+
+# Generate posterior predictions
+post_kcs_glob_data_gt <- fitted(bm_glob_kcs_gt, newdata = ndata_kcs_glob_data_gt, re_formula = NA) %>%
+  as_tibble() %>%
+  bind_cols(ndata_kcs_glob_data_gt)
+```
+
+```{r plot kcs_glob model}
+p_011_gt <- ggplot() +
+  # 1. Individual child points (weighted by their total recording time)
+  geom_point(data = kcs_glob_data_p_gt, aes(x = age_at_recording, y = speech_activity_percent, size = total_recording_minutes), color = "#2D6A4F", alpha = 0.35) +
+  geom_ribbon(data = post_kcs_glob_data_gt, aes(x = age_at_recording, ymin = Q2.5, ymax = Q97.5), fill = "#2D6A4F", alpha = 0.15) +
+  geom_line(data = post_kcs_glob_data_gt, aes(x = age_at_recording, y = Estimate), color = "#2D6A4F", linewidth = 1.2) +
+  scale_y_continuous(labels = scales::label_percent(), limits = c(0, 1)) + # Adjusted limit based on typical KCS
+  scale_size(name = "Total recording\nduration (in min)") +
+  labs(y = "Key Child Speech (%)", 
+       x = "Age (Years)") +
+  theme_minimal()
+
+p_011_gt
+```
+
+```{r kcs_glob model summary}
+summary(bm_glob_kcs_gt)
+```
+
+
+# How much speech is the child exposed to? 
+## Part 1
+```{r loads kcds data}
+cds_total_data_gt <- read_csv("data/analysis_20261018_221629_second_submission/03_cds_summary_gt.csv") %>%
+  filter(exposure_type == "TOTAL") %>%
+  mutate(
+    interaction_type = factor(interaction_type, levels = c("Alone", "Available", "Interacting")),
+    age = scale(age_at_recording),
+    exposure_percent = pmin(pmax(exposure_percent, 0), 1),
+    total_speech_minutes = total_speech_seconds / 60,
+    child_id = as.character(child_id)
+  )
+
+# Process for plotting points: One value per child and social state
+cds_data_p_gt <- cds_total_data_gt %>%
+  # Calculate absolute exposure minutes per segment
+  mutate(exposure_minutes = exposure_percent * segment_duration_minutes) %>%
+  group_by(child_id, interaction_type) %>%
+  summarise(
+    # Take the age of the first recording
+    age_at_recording = min(age_at_recording, na.rm = TRUE),
+    # Sum total duration and total exposure minutes
+    total_segment_minutes = sum(segment_duration_minutes, na.rm = TRUE),
+    total_exposure_minutes = sum(total_speech_minutes, na.rm = TRUE),
+    # Calculate the aggregate weighted percentage for this child in this state
+    total_speech_exposure = total_exposure_minutes / total_segment_minutes,
+    .groups = "drop"
+  )
+```
+
+```{r Check data distribution}
+ggplot(cds_total_data_gt, aes(x = exposure_percent)) +
+  geom_histogram(bins = 50, fill = "#3D7B8E", color = "white") +
+  labs(title = "Distribution of Speech Exposure",
+       subtitle = "Looking for spikes at 0 (no exposure) and 1",
+       x = "Exposure Percent (%)", y = "Frequency (Segments)") +
+  theme_minimal()
+```
+
+```{r run kcds model}
+bm_cds_gt <- brm(
+  exposure_percent | weights(segment_duration_minutes, scale = TRUE) ~ age * interaction_type + (1 + interaction_type | child_id),
+  family = zero_one_inflated_beta(),
+  data = cds_total_data_gt,
+  cores = 4,
+  chains = 4,
+  threads = threading(8), 
+  control = list(adapt_delta = 0.95, max_treedepth = 20),
+  iter = 8000,
+  backend = "cmdstanr"
+)
+```
+
+```{r prepare kcds plotting}
+# Generate prediction grid
+ndata_cds_gt <- expand_grid(
+  age_at_recording = seq(min(cds_total_data_gt$age_at_recording), 
+                         max(cds_total_data_gt$age_at_recording), 
+                         length.out = 100),
+  interaction_type = levels(cds_total_data_gt$interaction_type)
+) %>%
+  mutate(
+    age = (age_at_recording - mean(cds_total_data_gt$age_at_recording, na.rm = TRUE)) / 
+          sd(cds_total_data_gt$age_at_recording, na.rm = TRUE)
+  )
+
+post_cds_gt <- fitted(bm_cds_gt, newdata = ndata_cds_gt, re_formula = NA) %>%
+  as_tibble() %>%
+  bind_cols(ndata_cds_gt)
+```
+
+```{r plot kcds model}
+p_03_gt <- ggplot() +
+  # Points sized by recording duration
+  geom_point(data = cds_data_p_gt, aes(x = age_at_recording, y = total_speech_exposure, size = total_segment_minutes, col = interaction_type), alpha = 0.35) +
+  geom_ribbon(data = post_cds_gt, aes(x = age_at_recording, ymin = Q2.5, ymax = Q97.5, fill = interaction_type), alpha = 0.1) +   # Mean Estimate Line
+  geom_line(data = post_cds_gt, aes(x = age_at_recording, y = Estimate, col = interaction_type), linewidth = 1) +
+  scale_y_continuous(labels = scales::label_percent(), limits = c(0, 1)) +
+  scale_color_manual(name = "Social State", values = c("Alone" = "#69777B", "Available" = "#8E7C3B", "Interacting" = "#691633")) +
+  scale_fill_manual(name = "Social State", values = c("Alone" = "#69777B", "Available" = "#8E7C3B", "Interacting" = "#691633")) +
+  scale_size(name = "Total recording\nduration (in min)") +
+  guides(
+    size = guide_legend(order = 1),
+    color = guide_legend(order = 2),
+    fill = guide_legend(order = 2)
+  ) +
+  labs(y = "Speech Exposure (%)", x = "Age (Years)") +
+  theme_minimal() +
+  theme(plot.title = element_text(face = "bold", hjust = 0.5))
+
+p_03_gt
+```
+
+```{r kcds model summary}
+summary(bm_cds_gt)
+```
+
+## Part 2
+```{r load kcds_glob data}
+cds_total_glob_data_gt <- read_csv("data/analysis_20261018_221629_second_submission/03a_global_cds_summary_gt.csv") %>%
+  filter(exposure_type == "TOTAL") %>%
+  mutate(
+    age = as.numeric(scale(age_at_recording)),
+    child_id = as.character(child_id),
+    exposure_percent = pmin(pmax(exposure_percent, 0), 1),
+  )
+
+# Add scaled age for model consistency
+cds_total_glob_data_p_gt <- cds_total_glob_data_gt
+```
+
+```{r check data distribution}
+ggplot(cds_total_glob_data_gt, aes(x = exposure_percent)) +
+  geom_density(fill = "#691633", alpha = 0.3) +
+  geom_histogram(aes(y = ..density..), bins = 20, fill = "#691633", color = "white", alpha = 0.7) +
+  labs(x = "Global Speech Exposure (%)", y = "Density") +
+  theme_minimal()
+```
+
+```{r run cds_glob model}
+bm_cds_global_gt <- brm(
+  exposure_percent | weights(total_recording_minutes) ~ age,
+  data = cds_total_glob_data_gt,
+  family = Beta(link = "logit"),
+  backend = "cmdstanr",
+  chains = 4,
+  iter = 8000,
+  cores = 4,
+  control = list(adapt_delta = 0.95)
+)
+```
+
+```{r prepare cds_glob plotting}
+ndata_cds_total_glob_gt <- tibble(
+  age_at_recording = seq(min(cds_total_glob_data_p_gt$age_at_recording), 
+                         max(cds_total_glob_data_p_gt$age_at_recording), 
+                         length.out = 100)
+) %>%
+  mutate(
+    age = (age_at_recording - mean(cds_total_glob_data_p_gt$age_at_recording, na.rm = TRUE)) / 
+          sd(cds_total_glob_data_p_gt$age_at_recording, na.rm = TRUE)
+  )
+
+# Generate posterior predictions (fitted values)
+post_cds_total_glob_gt <- fitted(bm_cds_global_gt, newdata = ndata_cds_total_glob_gt) %>%
+  as_tibble() %>%
+  bind_cols(ndata_cds_total_glob_gt)
+```
+
+```{r plot cds_glob model}
+p_031_gt <- ggplot() +
+  geom_point(data = cds_total_glob_data_p_gt, aes(x = age_at_recording, y = exposure_percent, size = total_recording_minutes), color = "#2D6A4F", alpha = 0.35) +
+  geom_ribbon(data = post_cds_total_glob_gt, aes(x = age_at_recording, ymin = Q2.5, ymax = Q97.5), fill = "#2D6A4F", alpha = 0.15) +
+  geom_line(data = post_cds_total_glob_gt, aes(x = age_at_recording, y = Estimate), color = "#2D6A4F", linewidth = 1.2) +
+  scale_y_continuous(labels = scales::label_percent(), limits = c(0, 1)) +
+  scale_size(name = "Total recording\nduration (in min)") +
+  labs(y = "Speech Exposure (%)", 
+       x = "Age (Years)") +
+  theme_minimal()
+
+p_031_gt
+```
+
+```{r cds_glob model summary}
+summary(bm_cds_global_gt)
+```
+
+# How is children’s conversational turn taking behavior characterized?
+## Part 1
+```{r load turn taking data}
+turn_taking_raw_gt <- read_csv("data/analysis_20261018_221629_second_submission/04_turn_taking_summary_gt.csv") %>%
+  mutate(child_id = as.character(child_id)) %>%
+  #filter(!child_id %in% excluded_outlier_ids) %>%
+  mutate(
+    age = as.numeric(scale(age_at_recording)),
+    total_successful_blocks = successful_initiations + successful_responses,
+    prop_initiation = if_else(
+      total_successful_blocks > 0,
+      successful_initiations / total_successful_blocks,
+      0
+    ),
+    prop_response = if_else(
+      total_successful_blocks > 0,
+      successful_responses / total_successful_blocks,
+      0
+    )
+  )
+
+# Process for plotting points: ONE point per child
+turn_taking_p_gt <- turn_taking_raw_gt %>%
+  group_by(child_id) %>%
+  summarize(
+    age_at_recording = min(age_at_recording),
+    total_segment_minutes = sum(segment_duration_minutes),
+    total_turns_sum = sum(total_turns),
+    # Weighted average turns per minute
+    avg_turns_per_minute = total_turns_sum / total_segment_minutes,
+    .groups = "drop"
+  )
+```
+
+```{r check data distribution}
+ggplot(turn_taking_raw_gt, aes(x = turns_per_minute)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 bins = 30, 
+                 fill = "steelblue", 
+                 color = "white") +
+  geom_density(color = "red", size = 1) + 
+  labs(title = "Check for Bell-Curve Shape",
+       x = "Turns per Minute",
+       y = "Density") +
+  theme_minimal()
+```
+
+```{r run turn taking model}
+bm_turn_taking_gt <- brm(
+  bf(turns_per_minute | weights(segment_duration_minutes, scale = TRUE) ~ age + (1 | child_id),
+     hu ~ age + (1 | child_id)), 
+  family = hurdle_lognormal(), 
+  data = turn_taking_raw_gt,
+  cores = 4,
+  chains = 4,
+  iter = 8000,
+  backend = "cmdstanr",
+  control = list(adapt_delta = 0.95, max_treedepth = 20)
+)
+```
+
+  
+
+```{r prepare turn_taking plotting}
+ndata_turn_taking_gt <- tibble(
+  age_at_recording = seq(min(turn_taking_raw_gt$age_at_recording), 
+                         max(turn_taking_raw_gt$age_at_recording), 
+                         length.out = 100)
+) %>%
+  mutate(
+    age = (age_at_recording - mean(turn_taking_raw_gt$age_at_recording, na.rm = TRUE)) / 
+          sd(turn_taking_raw_gt$age_at_recording, na.rm = TRUE)
+  )
+
+# 1. Generate Posterior Predictions
+post_turn_taking_gt <- as_tibble(fitted(bm_turn_taking_gt, newdata = ndata_turn_taking_gt,
+                                     re_formula = NA)) %>%
+  bind_cols(ndata_turn_taking_gt)
+```
+
+```{r plot turn taking model}
+# 3. Create the Plot
+p_021_gt <- ggplot() +
+  geom_point(data = turn_taking_p_gt, aes(x = age_at_recording, y = avg_turns_per_minute, size = total_segment_minutes), col = "#691633", alpha = 0.35) +
+  geom_ribbon(data = post_turn_taking_gt, aes(x = age_at_recording, ymin = Q2.5, ymax = Q97.5), fill = "#691633", alpha = 0.1) +
+  geom_line(data = post_turn_taking_gt, aes(x = age_at_recording, y = Estimate), col = "#691633", linewidth = 1) +
+  scale_y_continuous(breaks = seq(0, 20, by = 2), limits = c(0, 18)) +
+  scale_size(name = "Total recording\nduration (in min)") +
+  labs(y = "Conversational Turns\nper Minute Interacting", x = "Age (Years)") +
+  theme_minimal()
+
+p_021_gt
+```
+
+```{r turn taking model summary }
+summary(bm_turn_taking_gt)
+```
+
+## Part 2
+```{r load agency data}
+# Create the long-format data for the model
+turns_agency_long_gt <- turn_taking_raw_gt %>%
+  # 1. Filter out segments where no turns happened to avoid 0/0 errors
+  filter(total_successful_blocks > 0) %>%
+  pivot_longer(
+    cols = c(prop_initiation, prop_response),
+    names_to = "agency_type",
+    values_to = "proportion"
+  ) %>%
+  # Safety clamp only, no statistical squeezing
+  mutate(prop_adj = pmin(pmax(proportion, 0), 1))
+```
+
+```{r check data distirbution}
+ggplot(turns_agency_long_gt, aes(x = proportion, fill = agency_type)) +
+  geom_histogram(bins = 30, color = "white", alpha = 0.8) +
+  facet_wrap(~agency_type, labeller = as_labeller(c(
+    "prop_initiation" = "Child-Led (Initiations)",
+    "prop_response" = "Adult-Led (Responses)"
+  ))) +
+  scale_fill_manual(values = c("prop_initiation" = "#2E5A88", "prop_response" = "#B57B36")) +
+  labs(
+    title = "Distribution of Conversational Agency",
+    subtitle = "Checking for spikes at 0 and 1 to decide between Beta and ZOIB",
+    x = "Proportion of Exchanges",
+    y = "Count of Segments"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+```{r run agency model}
+# Agency Model
+bm_agency_gt <- brm(
+  prop_adj ~ age * agency_type + (1 | child_id),
+  family = zero_one_inflated_beta(),
+  data = turns_agency_long_gt,
+  cores = 4, chains = 4,
+  backend = "cmdstanr"
+)
+```
+
+```{r prepare agency plotting}
+ndata_agency_gt <- expand_grid(
+  age_at_recording = seq(min(turns_agency_long_gt$age_at_recording), 
+                         max(turns_agency_long_gt$age_at_recording), 
+                         length.out = 100),
+  agency_type = c("prop_initiation", "prop_response")
+) %>%
+  mutate(
+    age = (age_at_recording - mean(turns_agency_long_gt$age_at_recording, na.rm = TRUE)) / 
+          sd(turns_agency_long_gt$age_at_recording, na.rm = TRUE)
+  )
+# Posterior predictions
+post_agency_gt <- fitted(bm_agency_gt, 
+                      newdata = ndata_agency_gt, 
+                      re_formula = NA) %>%
+  as_tibble() %>%
+  bind_cols(ndata_agency_gt)
+
+# Process for plotting points: one value per child per agency type
+agency_p_gt <- turn_taking_raw_gt %>%
+  filter(total_successful_blocks > 0) %>%
+  group_by(child_id) %>%
+  summarize(
+    age_at_recording = min(age_at_recording),
+    total_segment_minutes = sum(segment_duration_minutes),
+    # Weighted proportions
+    sum_init = sum(successful_initiations),
+    sum_resp = sum(successful_responses),
+    sum_total = sum(total_successful_blocks),
+    .groups = "drop"
+  ) %>%
+  pivot_longer(cols = c(sum_init, sum_resp), 
+               names_to = "agency_type", 
+               values_to = "count") %>%
+  mutate(
+    avg_proportion = count / sum_total,
+    agency_type = recode(agency_type, "sum_init" = "prop_initiation", "sum_resp" = "prop_response")
+  )
+```
+
+```{r plot agency model}
+p_022_gt <- ggplot() +
+  geom_point(data = agency_p_gt, aes(x = age_at_recording, y = avg_proportion, color = agency_type, size = total_segment_minutes), alpha = 0.35) +
+  geom_ribbon(data = post_agency_gt, aes(x = age_at_recording, ymin = Q2.5, ymax = Q97.5, fill = agency_type), alpha = 0.1, color = NA) +
+  geom_line(data = post_agency_gt, aes(x = age_at_recording, y = Estimate, color = agency_type), linewidth = 1) +
+  scale_y_continuous(labels = scales::label_percent(), limits = c(0, 1)) +
+  scale_color_manual(name = "Conversational Block\nInitiation", 
+                     values = c("prop_initiation" = "#691633", "prop_response" = "#D4A373"),
+                     labels = c("Child-Led", "Adult-Led")) +
+  scale_fill_manual(values = c("prop_initiation" = "#691633", "prop_response" = "#D4A373"), guide = "none") +
+  scale_size(name = "Total recording\nduration (in min)") +
+  labs(y = "Conversational Block Initiation \nduring Interaction (%)", x = "Age (Years)") +
+  theme_minimal()
+
+p_022_gt
+```
+
+```{r agency model summary}
+summary(bm_agency_gt)
+```
+
+## Part 3
+```{r load turn duration data}
+# Load the raw vocalization durations
+turn_duration_raw_gt <- read_csv("data/analysis_20261018_221629_second_submission/04b_turn_durations_summary_gt.csv") %>%
+  mutate(
+    child_id = as.character(child_id),
+    age = scale(as.numeric(age_at_recording))
+  ) %>%
+  # Filter out potential noise/extremely short segments
+  filter(vocalization_duration_sec > 0.1)
+
+turn_duration_p_gt <- turn_duration_raw_gt %>%
+  group_by(child_id) %>%
+  summarize(
+    # Get the raw age for the x-axis
+    age_at_recording = min(as.numeric(age_at_recording), na.rm = TRUE),
+    # Calculate the average duration for this child
+    avg_vocalization_duration = mean(vocalization_duration_sec, na.rm = TRUE),
+    total_vocalizations = n(),
+    .groups = "drop"
+  )
+```
+
+```{r check data distribution}
+# Check the distribution
+ggplot(turn_duration_raw_gt, aes(x = vocalization_duration_sec)) +
+  geom_histogram(bins = 50, fill = "#2E5A88", color = "white") +
+  labs(title = "Distribution of Individual Child Turn Durations",
+       x = "Duration (seconds)", y = "Count") +
+  theme_minimal()
+```
+
+```{r run turn duration model}
+# Model: Does age predict the length of an individual vocalization?
+bm_turn_duration_gt <- brm(
+  vocalization_duration_sec ~ age + (1 | child_id),
+  family = lognormal(),
+  data = turn_duration_raw_gt,
+  cores = 4, chains = 4,
+  iter = 8000,
+  backend = "cmdstanr",
+  control = list(adapt_delta = 0.95)
+)
+```
+
+```{r prepare turn duration plotting}
+ndata_turn_duration_gt <- tibble(
+  age_at_recording = seq(min(as.numeric(turn_duration_raw_gt$age_at_recording)), 
+                         max(as.numeric(turn_duration_raw_gt$age_at_recording)), 
+                         length.out = 100)
+) %>%
+  mutate(
+    age = (age_at_recording - mean(as.numeric(turn_duration_raw_gt$age_at_recording), na.rm = TRUE)) / 
+          sd(as.numeric(turn_duration_raw_gt$age_at_recording), na.rm = TRUE)
+  )
+
+# Generate predictions (back-transformed to seconds automatically by fitted())
+post_turn_duration_gt <- as_tibble(fitted(bm_turn_duration_gt, newdata = ndata_turn_duration_gt, re_formula = NA)) %>%
+  bind_cols(ndata_turn_duration_gt)
+```
+
+
+```{r plot turn duration model}
+# Plot the results
+p_023_gt <- ggplot() +
+  geom_point(data = turn_duration_p_gt, aes(x = age_at_recording, y = avg_vocalization_duration, size = total_vocalizations), color = "#691633", alpha = 0.35) +
+  geom_ribbon(data = post_turn_duration_gt, aes(x = age_at_recording, ymin = Q2.5, ymax = Q97.5), alpha = 0.1, fill = "#691633") +
+  geom_line(data = post_turn_duration_gt, aes(x = age_at_recording, y = Estimate), linewidth = 1.2, color = "#691633") +
+  scale_size(name = "Total turns\ncontributed") +
+  labs(y = "Mean Turn Length (Seconds)",
+       x = "Age (Years)") +
+  theme_minimal() +
+  guides(size = guide_legend(order = 1))
+
+p_023_gt
+```
+
+```{r turn duration model summary}
+summary(bm_turn_duration_gt)
+```
+
+## Part 4
+```{r load turn-taking_glob data}
+turn_taking_glob_data_gt <- read_csv("data/analysis_20261018_221629_second_submission/04a_global_turn_taking_summary_gt.csv") %>%
+  mutate(
+    child_id = as.character(child_id),
+    age = scale(age_at_recording),
+    turns_per_minute = turns_per_minute + 0.001)
+
+# Process for plotting points: ONE point per child
+turn_taking_p_gt <- turn_taking_raw_gt %>%
+  group_by(child_id) %>%
+  summarize(
+    age_at_recording = min(age_at_recording),
+    total_segment_minutes = sum(segment_duration_minutes),
+    total_turns_sum = sum(total_turns),
+    # Weighted average turns per minute
+    avg_turns_per_minute = total_turns_sum / total_segment_minutes,
+    .groups = "drop"
+  )
+
+```
+
+```{r run turn-taking_glob model}
+bm_turn_taking_glob_gt <- brm(
+  # Weigh by the amount of interaction time available for each child
+  turns_per_minute | weights(total_recording_minutes) ~ age,
+  data = turn_taking_glob_data_gt,
+  family = lognormal(),
+  backend = "cmdstanr",
+  chains = 4,
+  iter = 8000,
+  cores = 4,
+  control = list(adapt_delta = 0.95)
+)
+```
+
+```{r prepare turn_taking_glob plotting}
+ndata_turn_taking_glob_gt <- tibble(
+  # Create 100 points between the youngest and oldest child
+  age_at_recording = seq(min(turn_taking_glob_data_gt$age_at_recording), 
+                         max(turn_taking_glob_data_gt$age_at_recording), 
+                         length.out = 100)
+) %>%
+  mutate(age = (age_at_recording - mean(turn_taking_glob_data_gt$age_at_recording))/sd(turn_taking_glob_data_gt$age_at_recording))
+
+# Get posterior predictions
+post_turn_taking_glob_gt <- fitted(bm_turn_taking_glob_gt, newdata = ndata_turn_taking_glob_gt) %>%
+  as_tibble() %>%
+  bind_cols(ndata_turn_taking_glob_gt)
+
+```
+
+```{r plot turn-taking_glob model}
+# 3. Create the Plot
+p_024_gt <- ggplot() +
+  geom_point(data = turn_taking_glob_data_gt, aes(x = age_at_recording, y = turns_per_minute, size = total_recording_minutes), col = "#2D6A4F", alpha = 0.35) +
+  geom_ribbon(data = post_turn_taking_glob_gt, aes(x = age_at_recording, ymin = Q2.5, ymax = Q97.5), fill = "#2D6A4F", alpha = 0.1) +
+  geom_line(data = post_turn_taking_glob_gt, aes(x = age_at_recording, y = Estimate), col = "#2D6A4F", linewidth = 1) +
+  scale_y_continuous(breaks = seq(0, 20, by = 2), limits = c(0, 19)) +
+  scale_size(name = "Total recording\nduration (in min)") +
+  labs(y = "Conversational Turns\nper Minute Recorded", x = "Age (Years)") +
+  theme_minimal()
+
+p_024_gt
+```
+```{r turn-taking_glob summary}
+summary(bm_turn_taking_glob_gt)
+```
+
+# How do environmental cues predict active social interaction?
+```{r loads aspects data}
+aspects_data_gt <- read_csv("data/analysis_20261018_221629_second_submission/05_interaction_composition_gt.csv") %>%
+  mutate(
+    age = (scale(as.numeric(age_at_recording))),
+    child_id = as.character(child_id)
+  )
+
+aspects_data_m_gt <- bind_rows(
+  aspects_data_gt %>% filter(
+    has_cds == 1 & has_ohs == 0 & has_face == 0 & has_person == 0) %>% mutate(condition = "Only KCDS Present"),
+  aspects_data_gt %>% filter(
+    (has_cds == 1 | has_ohs == 1) & has_face == 0 & has_person == 0) %>% mutate(condition = "Only Speech Present"),
+  aspects_data_gt %>% filter(
+    has_cds == 0 & has_ohs == 0 & has_face == 1 & has_person == 0) %>% mutate(condition = "Only Face Present"),
+  aspects_data_gt %>% filter(
+    has_cds == 0 & has_ohs == 0 & has_face == 0 & has_person == 1) %>% mutate(condition = "Only Person Present"),
+) %>%
+  group_by(child_id, condition) %>%
+  summarize(
+    age = min(age),
+    age_at_recording = min(age_at_recording),
+    n = n(),
+    p = sum(is_interaction),
+    .groups = "drop"
+  )
+
+write_csv(aspects_data_m_gt, "data/analysis_20261018_221629_second_submission/05_interaction_composition_model_gt.csv")
+
+# Process for plotting points: one value per child per condition
+aspects_data_p_gt <- aspects_data_m_gt %>%
+  group_by(child_id, condition) %>%
+  summarize(
+    # Total trials (n) and total successes (p) across all recordings for this child
+    total_n = sum(n),
+    total_p = sum(p),
+    prop = total_p / total_n,
+    age_at_recording = age_at_recording,
+    .groups = "drop"
+  )
+```
+
+```{r run aspects model}
+bm_aspects_gt <- brm(
+  p | trials(n) ~ age * condition + (1 | child_id),
+  family = binomial(),
+  data = aspects_data_m_gt,
+  cores = 4, 
+  chains = 4, 
+  threads = threading(8),
+  control = list(adapt_delta = 0.95, max_treedepth = 20),
+  iter = 8000,
+  backend = "cmdstanr"
+)
+```
+
+```{r prepare aspects plotting}
+ndata_aspects_gt <- expand_grid(
+  condition = unique(aspects_data_m_gt$condition),
+  age_at_recording = seq(min(as.numeric(aspects_data_gt$age_at_recording)), 
+                         max(as.numeric(aspects_data_gt$age_at_recording)), 
+                         length.out = 100)
+) %>%
+  mutate(
+    age = (age_at_recording - mean(as.numeric(aspects_data_gt$age_at_recording), na.rm = TRUE)) / 
+          sd(as.numeric(aspects_data_gt$age_at_recording), na.rm = TRUE),
+    n = 1
+  )
+
+# Get posterior predictions
+post_aspects_gt <- fitted(bm_aspects_gt, newdata = ndata_aspects_gt, re_formula = NA) %>%
+  as_tibble() %>%
+  bind_cols(ndata_aspects_gt) %>%
+  # Convert back to raw age for the x-axis
+  mutate(age_at_recording = age * sd(as.numeric(aspects_data_gt$age_at_recording)) + 
+                            mean(as.numeric(aspects_data_gt$age_at_recording)))
+```
+
+```{r plot aspects model}
+aspect_colors <- c(
+  "Only Face Present"   = "#7D5BA6", 
+  "Only KCDS Present"   = "#3D7B8E", 
+  "Only Speech Present" = "#89CFF0",
+  "Only Person Present" = "#D99F59"
+)
+
+aspect_colors <- c(
+  "Only Face Present"   = "#F4A261", 
+  "Only KCDS Present"   = "#89CFF0", 
+  "Only Speech Present" = "#0F4C5C",
+  "Only Person Present" = "#9B2226"
+)
+
+p_04_gt <- ggplot() +
+  # 1. Plot empirical data points
+  geom_point(data = aspects_data_p_gt, aes(x = age_at_recording, y = prop, size = total_n, color = condition), alpha = 0.35) +
+  geom_ribbon(data = post_aspects_gt, aes(x = age_at_recording, ymin = Q2.5, ymax = Q97.5, fill = condition), alpha = 0.1) +
+  geom_line(data = post_aspects_gt, aes(x = age_at_recording, y = Estimate, color = condition), linewidth = 1.2) +
+  scale_y_continuous(labels = scales::label_percent(), limits = c(0, 1)) +
+  scale_color_manual(name = "Social Cues", values = aspect_colors) +
+  scale_fill_manual(name = "Social Cues", values = aspect_colors) +
+  scale_size(name = "Total observations\n(Frames)") +
+  labs(y = "Probability of Frame\nbeing in 'Interacting' State (%)", 
+       x = "Age (Years)") +
+  coord_cartesian(ylim = c(0, 1)) + # Ensures the probability stays within [0,1]
+  theme_minimal()
+
+p_04_gt
+```
+
+```{r aspects model summary}
+summary(bm_aspects_gt)
+```
+
+# Plotting
+```{r create combined plot}
+# Define common scales
+common_size_scale_1 <- scale_size(
+  name = "Total recording\nduration (in min)",
+  breaks = c(50, 150, 300, 450),
+  limits = c(0, 450)
+)
+
+common_size_scale_2 <- scale_size(
+  name = "Total recording\nduration (in min)",
+  breaks = c(50, 150, 250, 350),
+  limits = c(0, 350)
+)
+
+big_text_theme <- theme(
+  axis.title = element_text(size = 11, face = "bold"),
+  axis.text = element_text(size = 11),
+  legend.title = element_text(size = 10),
+  legend.text = element_text(size = 10))
+  #plot.margin = margin(t = 10, r = 35, b = 10, l = 10))
+
+p_00_gt_final <- p_00_gt + common_size_scale_1 + big_text_theme + theme(legend.position = "none")
+p_01_gt_final <- p_01_gt  + common_size_scale_1 + big_text_theme +theme(legend.position = "none")
+p_03_gt_final <- p_03_gt  + common_size_scale_1 + big_text_theme + theme(legend.position = "right") 
+
+p_011_gt_final <- p_011_gt + common_size_scale_1 + big_text_theme +theme(legend.position = "none")
+p_024_gt_final <- p_024_gt + common_size_scale_1 + big_text_theme + theme(legend.position = "none")
+p_031_gt_final <- p_031_gt + common_size_scale_1 + big_text_theme + theme(legend.position = "right")
+
+p_021_gt_final <- p_021_gt + common_size_scale_2 + big_text_theme + theme(legend.position = "right")
+p_022_gt_final <- p_022_gt + common_size_scale_2 + big_text_theme + theme(legend.position = "right")
+p_04_gt_final <- p_04_gt + big_text_theme
+
+fig1_gt <- plot_grid(
+  p_00_gt_final, p_01_gt_final, p_03_gt_final,
+  ncol = 3,
+  rel_widths = c(0.8, 0.8, 1),
+  labels = c("A", "B", "C"),
+  label_fontface = "bold",
+  label_x = -0.01
+)
+
+fig2_gt <- plot_grid(
+  p_024_gt_final, p_011_gt_final, p_031_gt_final,
+  ncol = 3,
+  rel_widths = c(0.8, 0.8, 1),
+  labels = c("A", "B", "C"),
+  label_fontface = "bold",
+  label_x = -0.01
+)
+
+fig3_gt <- plot_grid(
+  p_021_gt_final, p_022_gt_final, p_04_gt_final,
+  ncol = 3,
+  rel_widths = c(0.8, 0.8, 1),
+  labels = c("A", "B", "C"),
+  label_fontface = "bold",
+  label_x = -0.01
+)
+
+full_gt_fig <- plot_grid(
+  p_00_gt_final, p_01_gt_final, p_03_gt_final,
+  #p_024_gt_final, p_011_gt_final, p_031_gt_final,
+  p_021_gt_final, p_022_gt_final, p_04_gt_final,
+  ncol = 3,
+  rel_widths = c(0.8, 0.8, 1),
+  labels = c("A", "B", "C", "D", "E", "F"),
+  label_fontface = "bold",
+  label_x = -0.01
+)
+
+ggsave(fig1_gt, file = "images/results-plot-1-gt.png", height = 3.5, width = 16)
+ggsave(fig2_gt, file = "images/results-plot-2-gt.png", height = 3.5, width = 16)
+ggsave(fig3_gt, file = "images/results-plot-3-gt.png", height = 3.5, width = 16)
+ggsave(full_gt_fig, file = "images/results-plot-gt.png", height = 8, width = 16)
+```

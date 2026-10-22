@@ -7,8 +7,8 @@ import pandas as pd
 import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 
-from config import AnalysisConfig, DataConfig, FaceConfig
-from constants import Analysis, DataPaths, Visualization
+from src.config import AnalysisConfig, DataConfig, FaceConfig
+from src.constants import Analysis, DataPaths, Visualization
 
 SAMPLED_FPS = DataConfig.FPS / AnalysisConfig.SAMPLE_RATE  # (30/10 = 3 fps)
 EXCLUSION_FRAMES = AnalysisConfig.EXCLUSION_SECONDS * DataConfig.FPS  # 900 frames

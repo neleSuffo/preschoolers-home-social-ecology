@@ -5,8 +5,8 @@ import logging
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from constants import DataPaths
-from config import LabelMapping, DataConfig
+from src.constants import DataPaths
+from src.config import LabelMapping, DataConfig
 
 # Configure logging
 logging.basicConfig(

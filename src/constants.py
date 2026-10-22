@@ -116,7 +116,11 @@ class Analysis:
     PERFORMANCE_RESULTS_TXT = Path("performance_results.txt")
     RULE_ABLATION_SUMMARY_CSV = BASE_OUTPUT_DIR / "rule_ablation_summary.csv"
     RULE_ABLATION_PLOT = BASE_OUTPUT_DIR/ "rule_ablation_plot.png"
+<<<<<<< Updated upstream
     GROUND_TRUTH_SEGMENTS_CSV = BASE_OUTPUT_DIR / "interaction_segments_final_gt.csv"
+=======
+    GROUND_TRUTH_SEGMENTS_CSV = BASE_OUTPUT_DIR / "ground_truth_segments.csv"
+>>>>>>> Stashed changes
     GT_1_FILE_PATH = BASE_OUTPUT_DIR / "interaction_segments_clara.csv"
     GT_2_FILE_PATH = BASE_OUTPUT_DIR / "interaction_segments_lotta.csv"
     GT_1_SECONDWISE_FILE_PATH = BASE_OUTPUT_DIR / "gt_ann1_secondwise.csv"

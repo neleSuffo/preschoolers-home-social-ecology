@@ -11,8 +11,8 @@ from PIL import Image
 from supervision import Detections
 from ultralytics import YOLO
 
-from constants import Analysis, FaceDetection, PersonDetection
-from models.proximity.estimate_proximity import calculate_proximity
+from src.constants import Analysis, FaceDetection, PersonDetection
+from src.models.proximity.estimate_proximity import calculate_proximity
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"

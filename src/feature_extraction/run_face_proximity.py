@@ -7,10 +7,10 @@ from typing import List, Callable
 from pathlib import Path
 from ultralytics import YOLO
 from tqdm import tqdm
-from constants import DataPaths, FaceDetection, Inference
-from config import FaceConfig
-from models.proximity.estimate_proximity import calculate_proximity
-from utils import get_video_id, get_frame_paths, extract_frame_number, load_processed_videos, save_processed_video
+from src.constants import DataPaths, FaceDetection, Inference
+from src.config import FaceConfig
+from src.models.proximity.estimate_proximity import calculate_proximity
+from src.feature_extraction.utils import get_video_id, get_frame_paths, extract_frame_number, load_processed_videos, save_processed_video
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 LOG_FILE_PATH = Inference.FACE_LOG_FILE_PATH

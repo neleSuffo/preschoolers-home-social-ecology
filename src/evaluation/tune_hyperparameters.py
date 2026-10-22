@@ -22,10 +22,17 @@ from itertools import product
 src_path = Path(__file__).parent.parent
 sys.path.append(str(src_path))
 
+<<<<<<< Updated upstream
 from constants import DataPaths, Analysis, Inference
 from config import AnalysisConfig, HyperparameterConfig
 from eval_segment_performance import run_evaluation
 from pipeline.frame_level_rules import main as frame_analysis_main
+=======
+from src.constants import DataPaths, Analysis, Inference
+from src.config import AnalysisConfig, HyperparameterConfig
+from src.evaluation.eval_segment_performance import run_evaluation
+from src.pipeline.frame_level_rules import main as frame_analysis_main
+>>>>>>> Stashed changes
 from heuristics.segment_aggregation import main as segment_analysis_main
 
 

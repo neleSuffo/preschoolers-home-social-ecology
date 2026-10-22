@@ -1,0 +1,4 @@
+Social State;Total Segments;Total Duration (Hours);Total Duration (Minutes);Total Sampled Frames;Total Face Detections;Frames with ≥1 Face;Face Presence Rate (%);Faces / Sampled Frame;Faces / Hour
+Interacting;2664;130.39;7823.3;1408187;541248;453508;32.21;0.384;4151.1
+Available;2136;78.98;4738.6;852946;85061;77458;9.08;0.1;1077.0
+Alone;857;53.51;3210.4;577864;4840;4627;0.8;0.008;90.5

@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 import cv2
 from pathlib import Path
-from constants import DataPaths
+from src.constants import DataPaths
 
 logging.basicConfig(level=logging.INFO)
 

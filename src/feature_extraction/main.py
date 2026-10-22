@@ -1,13 +1,20 @@
 import logging
 import argparse
+<<<<<<< Updated upstream
 import run_face_proximity
 import populate_speech_db as run_speech_type
 import run_person_detection
 import run_book_detection
+=======
+import src.feature_extraction.run_face_proximity as run_face_proximity
+import src.feature_extraction.populate_speech_db as run_speech_type
+import src.feature_extraction.run_person_detection as run_person_detection
+import src.feature_extraction.run_book_detection as run_book_detection
+>>>>>>> Stashed changes
 from pathlib import Path
-from setup_inference_db import main as setup_inference_db
-from constants import DataPaths, Inference, Analysis
-from config import DataConfig, FaceConfig, PersonConfig, AnalysisConfig
+from src.feature_extraction.setup_inference_db import main as setup_inference_db
+from src.constants import DataPaths, Inference, Analysis
+from src.config import DataConfig, FaceConfig, PersonConfig, AnalysisConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

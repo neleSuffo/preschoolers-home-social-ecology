@@ -3,8 +3,8 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 from ultralytics import YOLO
-from constants import PersonDetection, PersonClassification 
-from config import PersonConfig
+from src.constants import PersonDetection, PersonClassification 
+from src.config import PersonConfig
 
 # Logging configuration
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
