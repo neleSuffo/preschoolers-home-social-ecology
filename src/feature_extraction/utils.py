@@ -1,124 +1,140 @@
-import logging
-import sqlite3
-import re
-from pathlib import Path
-from typing import Set
-from src.config import DataConfig
+"""
+src/feature_extraction/utils.py
 
-def get_video_id(video_name: str, cursor: sqlite3.Cursor) -> int:
-    """Get video_id from Videos table using video name
-    
-    Parameters:
+Shared utility functions for video metadata extraction, frame retrieval,
+frame number parsing, and processing log management across feature pipelines.
+"""
+
+import logging
+from pathlib import Path
+import re
+import sqlite3
+from typing import List, Optional, Set
+
+from src.config import VideoSpecs
+
+logger = logging.getLogger(__name__)
+
+
+def get_video_id(video_name: str, cursor: sqlite3.Cursor) -> Optional[int]:
+    """
+    Retrieve the unique database primary key for a given video stem.
+
+    Parameters
     ----------
     video_name : str
-        Name of the video (without extension)
+        Base identifier of the recording session (without file extension).
     cursor : sqlite3.Cursor
-        Active cursor to the SQLite database
-        
-    Returns:
+        Active database cursor connected to the SQLite inference database.
+
+    Returns
     -------
-    int or None
-        The video_id corresponding to the video_name, or None if not found
+    Optional[int]
+        The integer video_id if present in the Videos table, otherwise None.
     """
-    cursor.execute('SELECT video_id FROM Videos WHERE video_name = ?', (video_name,))
+    cursor.execute("SELECT video_id FROM Videos WHERE video_name = ?", (video_name,))
     result = cursor.fetchone()
     if result:
-        return result[0]
-    else:
-        logging.error(f"Video {video_name} not found in Videos table")
-        return None
-    
+        return int(result[0])
+
+    logger.error("Video '%s' not registered in Videos table.", video_name)
+    return None
+
+
 def extract_frame_number(filename: str) -> int:
-    """Extract frame number from filename using regex
-    
-    Parameters:
+    """
+    Extract the trailing frame number from an image filename using regular expressions.
+
+    Examples:
+        - 'frame_000120.jpg' -> 120
+        - 'quantex_at_home_id255_0042.png' -> 42
+        - '0015.PNG' -> 15
+
+    Parameters
     ----------
     filename : str
-        The filename from which to extract the frame number (e.g., 'frame_001.jpg')
-        
-    Returns:
+        Filename or path stem to parse.
+
+    Returns
     -------
     int
-        The extracted frame number, or 0 if no number is found.
+        Extracted integer frame number, or 0 if no digits are present.
     """
-    # Try to extract numbers from filename (e.g., frame_001.jpg -> 1, video_name_0042.jpg -> 42)
-    numbers = re.findall(r'\d+', filename)
+    numbers = re.findall(r"\d+", filename)
     if numbers:
-        return int(numbers[-1])  # Use last number found
-    else:
-        return 0    
+        return int(numbers[-1])
+    return 0
 
-def get_frame_paths(video_frame_dir: Path):
+
+def get_frame_paths(video_frame_dir: Path) -> List[Path]:
     """
-    Returns a sorted list of frame paths in video_frame_dir
-    for all valid extensions defined in DataConfig.VALID_EXTENSIONS.
-    
-    Parameters:
+    Retrieve and sort all valid frame image paths within a video directory.
+
+    Frames are sorted chronologically based on their extracted frame numbers.
+
+    Parameters
     ----------
     video_frame_dir : Path
-        Directory containing the video frames
-        
-    Returns:
+        Filesystem directory containing extracted video stills.
+
+    Returns
     -------
     List[Path]
-        Sorted list of frame paths
+        Chronologically sorted list of image paths.
     """
-    frame_paths = []
-    for ext in DataConfig.VALID_EXTENSIONS:
-        frame_paths.extend(video_frame_dir.glob(f"*{ext}"))
+    if not video_frame_dir.exists():
+        logger.warning("Frame directory does not exist: %s", video_frame_dir)
+        return []
 
-    # Sort by the numeric part at the end of the filename
-    frame_paths = sorted(
-        frame_paths,
-        key=lambda x: int(x.stem.split('_')[-1])
-    )
+    frame_paths = [
+        p for p in video_frame_dir.iterdir()
+        if p.is_file() and p.suffix.lower() in VideoSpecs.VALID_IMG_EXTENSIONS
+    ]
+
+    # Sort robustly by extracted frame number
+    frame_paths.sort(key=lambda p: extract_frame_number(p.name))
     return frame_paths
+
 
 def load_processed_videos(log_file_path: Path) -> Set[str]:
     """
-    Load the list of already processed videos from a simple text file.
-    
-    Parameters:
-    -----------
+    Read the progress log text file and return the set of completed video stems.
+
+    Parameters
+    ----------
     log_file_path : Path
-        Path to the processing log file
-        
-    Returns:
-    --------
+        Filesystem path to the processing checkpoint log.
+
+    Returns
+    -------
     Set[str]
-        Set of video names that have already been processed
+        Set of video stem strings that have already been processed.
     """
-    # If log file doesn't exist, return empty set
     if not log_file_path.exists():
         return set()
-    
+
     try:
-        with open(log_file_path, 'r') as f:
-            processed_videos = {line.strip() for line in f if line.strip()}
-        return processed_videos
+        with open(log_file_path, "r", encoding="utf-8") as f:
+            return {line.strip() for line in f if line.strip()}
     except Exception as e:
-        logging.warning(f"Could not load processed videos log: {e}")
+        logger.warning("Could not load processing log from %s: %s", log_file_path, e)
         return set()
 
 
-def save_processed_video(log_file_path: Path, video_name: str):
+def save_processed_video(log_file_path: Path, video_name: str) -> None:
     """
-    Add a video name to the processed videos log file.
-    
-    Parameters:
-    -----------
+    Append a completed video stem to the processing checkpoint log.
+
+    Parameters
+    ----------
     log_file_path : Path
-        Path to the processing log file
+        Filesystem path to the processing checkpoint log.
     video_name : str
-        Name of the video that was processed
+        Video stem name to record.
     """
     try:
-        # Ensure directory exists
         log_file_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Append video name to file
-        with open(log_file_path, 'a') as f:
+        with open(log_file_path, "a", encoding="utf-8") as f:
             f.write(f"{video_name}\n")
-            
     except Exception as e:
-        logging.error(f"Could not save processed video log: {e}")
+        logger.error("Failed to append '%s' to log file %s: %s", video_name, log_file_path, e)

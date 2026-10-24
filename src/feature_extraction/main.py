@@ -1,136 +1,251 @@
-import logging
+"""
+src/feature_extraction/main.py
+
+Top-level CLI orchestrator for feature extraction.
+Sets up the relational inference database, ensures model checkpoints are present,
+and dispatches batch extraction for face proximity, person detection, book filtering,
+and speech diarization.
+"""
+
 import argparse
-<<<<<<< Updated upstream
-import run_face_proximity
-import populate_speech_db as run_speech_type
-import run_person_detection
-import run_book_detection
-=======
-import src.feature_extraction.run_face_proximity as run_face_proximity
-import src.feature_extraction.populate_speech_db as run_speech_type
-import src.feature_extraction.run_person_detection as run_person_detection
-import src.feature_extraction.run_book_detection as run_book_detection
->>>>>>> Stashed changes
+import logging
 from pathlib import Path
-from src.feature_extraction.setup_inference_db import main as setup_inference_db
-from src.constants import DataPaths, Inference, Analysis
-from src.config import DataConfig, FaceConfig, PersonConfig, AnalysisConfig
+from typing import List, Optional
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from constants import AnalysisPaths
+from src.config import DetectionConfig, VideoSpecs
+from src.feature_extraction.setup_inference_db import (
+    populate_video_metadata,
+    setup_inference_schema,
+)
+from src.feature_extraction.download_model_weights import download_weights
+from src.feature_extraction.run_audio_ingestion import run_audio_pipeline
+from src.feature_extraction.run_video_detection import run_pipeline as run_detection_pipeline
 
-def main(video_path: Path, db_path: Path, frame_step: int, models: list = None):
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+def resolve_video_list(video_input_path: Path) -> List[str]:
     """
-    This function runs the detection pipeline. It first sets up the detection database and then runs the detection pipeline.
-    
-    Parameters:
+    Parse a video path, directory, or text file into a list of clean video stems.
+
+    Parameters
+    ----------
+    video_input_path : Path
+        Path to a single video file, a directory of videos, or a .txt file.
+
+    Returns
+    -------
+    List[str]
+        Unique list of video identifiers (filenames without extension).
+    """
+    selected_videos: List[str] = []
+    video_ext = VideoSpecs.VIDEO_FILE_EXTENSION.lower()
+
+    if not video_input_path.exists():
+        logger.error("Provided video path does not exist: %s", video_input_path)
+        return []
+
+    # Case 1: Text file containing list of video stems
+    if video_input_path.is_file() and video_input_path.suffix.lower() == ".txt":
+        logger.info("Reading video identifiers from text file: %s", video_input_path.name)
+        with open(video_input_path, "r", encoding="utf-8") as f:
+            selected_videos = [line.strip() for line in f if line.strip()]
+
+    # Case 2: Single video file
+    elif video_input_path.is_file() and video_input_path.suffix.lower() == video_ext:
+        logger.info("Targeting single video: %s", video_input_path.name)
+        selected_videos = [video_input_path.stem]
+
+    # Case 3: Directory containing video files
+    elif video_input_path.is_dir():
+        logger.info("Scanning directory for %s videos: %s", video_ext, video_input_path)
+        video_files = [
+            f for f in video_input_path.iterdir()
+            if f.is_file() and f.suffix.lower() == video_ext
+        ]
+        selected_videos = [f.stem for f in video_files]
+
+    else:
+        logger.error(
+            "Unsupported file or path format for: %s (expected .txt, %s, or directory)",
+            video_input_path,
+            video_ext,
+        )
+        return []
+
+    # Deduplicate while preserving order
+    return list(dict.fromkeys(selected_videos))
+
+
+def run_inference_pipeline(
+    video_path: Path,
+    db_path: Path = AnalysisPaths.INFERENCE_DB,
+    metadata_csv: Path = AnalysisPaths.METADATA_CSV,
+    frame_step: int = VideoSpecs.FRAME_STEP_INTERVAL,
+    models: Optional[List[str]] = None,
+    force: bool = False,
+    auto_download_weights: bool = True,
+) -> bool:
+    """
+    Execute full multi-modal detection and diarization ingestion pipeline.
+
+    Parameters
     ----------
     video_path : Path
-        Path to a single video file, a directory containing video files, OR a .txt file 
-        containing a list of video filenames.
-    db_path : Path
-        Path to the database where results will be stored
-    frame_step : int
-        The step size for processing frames in the videos, default is 10
-    models : list, optional
-        List of models to run. Options: 'person', 'face_proximity', 'speech_type', 'all'
-        If None or 'all', all models will be run.
-        
-    Returns:
+        Path to a video file, folder, or text file listing videos.
+    db_path : Path, default=AnalysisPaths.INFERENCE_DB
+        SQLite database file for persisting inference outputs.
+    metadata_csv : Path, default=AnalysisPaths.METADATA_CSV
+        Metadata CSV containing recording age and child IDs.
+    frame_step : int, default=VideoSpecs.FRAME_STEP_INTERVAL
+        Frame sampling step (e.g., 10 for 3 Hz).
+    models : Optional[List[str]], default=None
+        Models to execute: subset of {'person', 'face', 'book', 'speech'} or ['all'].
+    force : bool, default=False
+        If True, reprocesses videos even if logged in progress logs.
+    auto_download_weights : bool, default=True
+        Automatically downloads missing Hugging Face model checkpoints.
+
+    Returns
     -------
     bool
-        True if the inference completed successfully, False otherwise
+        True if all stages completed without fatal error, False otherwise.
     """
     try:
-        # Setup the detection database which will hold the detection results (if it doesnt already exist)
-        setup_inference_db(db_path = db_path)
+        # 1. Ensure Model Weights Exist
+        if auto_download_weights:
+            download_weights()
 
-        # Ensure video_path is a Path object
-        video_path = Path(video_path)
-        selected_videos = []
-        
-        # --- PATH CHECK LOGIC ADJUSTMENT ---
-        if video_path.is_file():
-            if video_path.suffix.lower() == '.txt':
-                # Case 1: .txt file provided
-                logging.info(f"Processing list of videos from text file: {video_path.name}")
-                with open(video_path, 'r') as f:
-                    # Read lines, strip whitespace, and filter out empty lines
-                    selected_videos = [line.strip() for line in f if line.strip()]
-                
-                if not selected_videos:
-                    logging.error(f"Text file is empty or contains no video names: {video_path}")
-                    return False
-                logging.info(f"Loaded {len(selected_videos)} video names from the list.")
+        # 2. Initialize Database Schema and Metadata
+        setup_inference_schema(db_path=db_path)
+        populate_video_metadata(
+            metadata_csv=metadata_csv,
+            db_path=db_path,
+            raw_videos_dir=AnalysisPaths.VIDEOS_DIR,
+        )
 
-            elif video_path.suffix.lower() in DataConfig.VIDEO_FILE_EXTENSION:
-                # Case 2: Single video file processing
-                logging.info(f"Processing single video file: {video_path.name}")
-                selected_videos = [video_path.stem]  # Use stem (filename without extension)
-                
-            else:
-                logging.error(f"Unsupported file extension: {video_path.suffix}")
-                return False
-            
-        elif video_path.is_dir():
-            # Case 3: Directory processing - find all video files (lower sufix)
-            video_files = [f for f in video_path.iterdir() 
-                        if f.is_file() and f.suffix.lower() in DataConfig.VIDEO_FILE_EXTENSION]
-            
-            if not video_files:
-                logging.error(f"No video files found in directory: {video_path}")
-                logging.info(f"Looking for extensions: {', '.join(sorted(DataConfig.VIDEO_FILE_EXTENSION))}")
-                return False
-            
-            logging.info(f"Processing {len(video_files)} video files from directory: {video_path}")
-            selected_videos = [f.stem for f in video_files]
-            
-        else:
-            logging.error(f"Path is neither a file, a directory, nor a valid text list: {video_path}")
+        # 3. Resolve Target Video List
+        selected_videos = resolve_video_list(video_path)
+        if not selected_videos:
+            logger.error("No valid video recordings identified. Halting execution.")
             return False
-        
-        # Determine which models to run
-        if models is None or 'all' in models:
-            models_to_run = ['person', 'face_proximity', 'speech_type', 'book']
+
+        logger.info("Found %d video recording(s) to process.", len(selected_videos))
+
+        # 4. Resolve Model Execution Selection
+        if not models or "all" in models:
+            models_to_run = ["person", "face", "book", "speech"]
         else:
-            models_to_run = models
-        
-        # Run selected models
-        if 'person' in models_to_run:
-            logging.info("Running person detection model using confidence threshold of " + str(PersonConfig.CONFIDENCE_THRESHOLD))
-            run_person.main(selected_videos)
-        
-        if 'book' in models_to_run:
-            logging.info("Running book detection model")
-            run_book.main(selected_videos)
-        
-        if 'face_proximity' in models_to_run:
-            logging.info("Running face model with proximity estimation") #using confidence threshold of " + str(FaceConfig.CONFIDENCE_THRESHOLD))
-            run_face_proximity.main(selected_videos, frame_step)
-        
-        if 'speech_type' in models_to_run:
-            logging.info("Running speech type classification model")
-            run_speech_type.main(selected_videos)
-        
-        logging.info("Inference pipeline completed successfully")
+            models_to_run = [m for m in models]
+
+        # 5. Execute Extraction Pipelines
+        if "person" in models_to_run:
+            logger.info("Executing Person Detection (Confidence Floor: %.3f)...", DetectionConfig.PERSON_CONFIDENCE_THRESHOLD)
+            run_detection_pipeline(
+                task="person",
+                video_list=selected_videos,
+                frame_step=frame_step,
+                force=force,
+            )
+
+        if "face" in models_to_run:
+            logger.info("Executing Face Detection & Proximity (Confidence Floor: %.3f)...", DetectionConfig.FACE_CONFIDENCE_THRESHOLD)
+            run_detection_pipeline(
+                task="face",
+                video_list=selected_videos,
+                frame_step=frame_step,
+                force=force,
+            )
+
+        if "book" in models_to_run:
+            logger.info("Executing Book / Object Filter Detection...")
+            run_detection_pipeline(
+                task="book",
+                video_list=selected_videos,
+                frame_step=frame_step,
+                force=force,
+            )
+
+        if "speech" in models_to_run:
+            logger.info("Executing Voice Type Classifier (VTC) Audio Ingestion...")
+            run_audio_pipeline(
+                video_list=selected_videos,
+                force=force,
+            )
+
+        logger.info("Feature extraction pipeline completed successfully.")
         return True
-        
+
     except Exception as e:
-        logging.error(f"Error during inference pipeline: {e}")
+        logger.exception("Inference pipeline failed: %s", e)
         return False
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run inference pipeline with selectable models")
 
-    parser.add_argument("--video_path", type=Path, default=Analysis.QUANTEX_VIDEOS_LIST_FILE, help="Path to video file or directory containing videos")
-    parser.add_argument("--db_path", type=Path, default=DataPaths.INFERENCE_DB_PATH, help="Path to the database where results will be stored")
-    parser.add_argument("--frame_step", type=int, default=AnalysisConfig.SAMPLE_RATE, help="Frame step size for processing videos")
-    parser.add_argument("--models", nargs='+', choices=['person', 'face_proximity', 'speech_type', 'book', 'all'], default=['all'],  help="Select which models to run. Options: person, face_proximity, speech_type, book, all")
-    args = parser.parse_args()
-    
-    main(
-        video_path=args.video_path, 
-        models=args.models,
-        db_path=args.db_path, 
-        frame_step=args.frame_step,
+def main() -> None:
+    """CLI entrypoint for batch extraction orchestration."""
+    parser = argparse.ArgumentParser(
+        description="Unified Feature Extraction Pipeline Orchestrator"
     )
+    parser.add_argument(
+        "--video_path",
+        type=Path,
+        default=AnalysisPaths.VIDEOS_LIST,
+        help="Path to a video file, folder of videos, or text list of video IDs",
+    )
+    parser.add_argument(
+        "--db_path",
+        type=Path,
+        default=AnalysisPaths.INFERENCE_DB,
+        help="Target SQLite database path",
+    )
+    parser.add_argument(
+        "--metadata_csv",
+        type=Path,
+        default=AnalysisPaths.METADATA_CSV,
+        help="Path to metadata.csv",
+    )
+    parser.add_argument(
+        "--frame_step",
+        type=int,
+        default=VideoSpecs.FRAME_STEP_INTERVAL,
+        help="Frame step size for processing (default: 10)",
+    )
+    parser.add_argument(
+        "--models",
+        nargs="+",
+        choices=["person", "face", "book", "speech", "all"],
+        default=["all"],
+        help="Select which extractors to execute",
+    )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force reprocessing of already completed video sessions",
+    )
+    parser.add_argument(
+        "--skip_download",
+        action="store_true",
+        help="Skip automatic model weight verification and download",
+    )
+    args = parser.parse_args()
+
+    success = run_inference_pipeline(
+        video_path=args.video_path,
+        db_path=args.db_path,
+        metadata_csv=args.metadata_csv,
+        frame_step=args.frame_step,
+        models=args.models,
+        force=args.force,
+        auto_download_weights=not args.skip_download,
+    )
+
+    exit(0 if success else 1)
+
+
+if __name__ == "__main__":
+    main()

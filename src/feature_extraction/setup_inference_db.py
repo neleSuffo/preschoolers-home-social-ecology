@@ -1,34 +1,90 @@
-import sqlite3
+"""
+src/database/setup_inference_db.py
+
+Initializes the schema for the multimodal inference database (inference.db).
+Creates tables for video sessions, models, YOLO face/person/book detections,
+audio diarization records, and critical composite performance indexes.
+Populates metadata from metadata.csv and calculates video frame counts.
+"""
+
+import argparse
+import json
 import logging
-import pandas as pd
-import cv2
 from pathlib import Path
-from src.constants import DataPaths
+import sqlite3
+from typing import List, Optional
 
-logging.basicConfig(level=logging.INFO)
+import cv2
+import pandas as pd
 
-def get_max_frame_count(video_path: Path) -> int:
+from src.config import DetectionConfig
+from src.constants import AnalysisPaths
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+
+def build_audio_table_schema(
+    audio_classes: Optional[List[str]] = None,
+) -> str:
     """
-    Returns the maximum number of frames in a video using OpenCV.
-    If the video cannot be opened, returns None.
-    
-    Parameters:
+    Construct dynamic CREATE TABLE DDL for AudioClassifications 
+    based on the configured audio classes.
+    """
+    if audio_classes is None:
+        audio_classes = DetectionConfig.AUDIO_CLASSES
+
+    column_defs = [
+        "classification_id INTEGER PRIMARY KEY AUTOINCREMENT",
+        "video_id INTEGER NOT NULL",
+        "frame_number INTEGER NOT NULL",
+        "model_id INTEGER NOT NULL",
+    ]
+
+    for token in audio_classes:
+        # Standardize name (e.g., 'KCDS' -> 'cds', 'OHS' -> 'ohs')
+        col_name = token.lower().replace("kcds", "cds")
+        column_defs.append(f"has_{col_name} INTEGER CHECK(has_{col_name} IN (0, 1))")
+        column_defs.append(f"{col_name}_confidence_score REAL")
+
+    column_defs.extend([
+        "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        "FOREIGN KEY (video_id) REFERENCES Videos(video_id)",
+        "FOREIGN KEY (model_id) REFERENCES Models(model_id)",
+    ])
+
+    formatted_cols = ",\n                ".join(column_defs)
+    return f"""
+        CREATE TABLE IF NOT EXISTS AudioClassifications (
+            {formatted_cols}
+        )
+    """
+
+
+def get_max_frame_count(video_path: Path) -> Optional[int]:
+    """
+    Retrieve the total number of frames in a video container using OpenCV.
+
+    Parameters
     ----------
     video_path : Path
-        Path to the video file.
-        
-    Returns:
+        Path to the target video file.
+
+    Returns
     -------
-    int or None
-        The maximum number of frames in the video, or None if the video cannot be opened.
+    Optional[int]
+        Total frame count, or None if the video cannot be opened.
     """
     if not video_path.exists():
-        logging.error(f"Video not found: {video_path}")
+        logger.warning("Video file not found: %s", video_path)
         return None
 
     cap = cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
-        logging.error(f"Failed to open video: {video_path}")
+        logger.error("Failed to open video container: %s", video_path)
         return None
 
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -36,256 +92,272 @@ def get_max_frame_count(video_path: Path) -> int:
     return frame_count
 
 
-def store_video_data(age_group_df: pd.DataFrame, conn: sqlite3.Connection):
+def setup_inference_schema(db_path: Path) -> None:
     """
-    Stores video information from age_group.csv directly in the Videos table.
-    Also computes and stores max_frame for each video.
-    
-    Parameters:
-    ----------
-    age_group_df : pd.DataFrame
-        DataFrame containing video information from age_group.csv.
-    conn : sqlite3.Connection
-        Active connection to the SQLite database where video data will be stored.
-    """
-    cursor = conn.cursor()
-    video_data = []
+    Create database tables and composite lookup indexes if they do not exist.
 
-    for _, row in age_group_df.iterrows():
-        try:
-            video_name = row['video_name']
-            child_id = row['child_id']
-            recording_date_str = row['recording_date']
-            age_at_recording = row['age_at_recording']
-            age_group = row['age_group']
-
-            # Parse recording date (format: dd.mm.yyyy)
-            recording_date = pd.to_datetime(recording_date_str, format="%d.%m.%Y")
-
-            # Determine max frame
-            # check for .MP4 and .mp4
-            
-            video_base = DataPaths.QUANTEX_VIDEOS_INPUT_DIR / video_name
-
-            # Find the actual file independent of extension
-            matched_files = list(video_base.parent.glob(f"{video_base.stem}.*"))
-
-            if not matched_files:
-                raise FileNotFoundError(f"No file found for base name: {video_name}")
-
-            # Normalize extension to handle .mp4 / .MP4 / .mP4 / .Mp4 etc.
-            video_path = matched_files[0]
-            ext = video_path.suffix.lower()
-
-            if ext == ".mp4":
-                # use video_path from here
-                max_frame = get_max_frame_count(video_path)
-            else:
-                raise ValueError(f"Unsupported extension: {ext}")
-
-            # Prepare table output log
-            video_data.append({
-                'video_name': video_name,
-                'child_id': child_id,
-                'recording_date': recording_date.strftime('%Y-%m-%d'),
-                'age_at_recording': f"{age_at_recording:.2f}",
-                'age_group': age_group,
-                'max_frame': max_frame
-            })
-
-            # Insert or update video data including max_frame
-            cursor.execute('''
-                INSERT INTO Videos (video_name, child_id, recording_date, age_at_recording, age_group, max_frame)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(video_name) DO UPDATE SET
-                    child_id=excluded.child_id,
-                    recording_date=excluded.recording_date,
-                    age_at_recording=excluded.age_at_recording,
-                    age_group=excluded.age_group,
-                    max_frame=excluded.max_frame
-            ''', (
-                video_name,
-                child_id,
-                recording_date.strftime('%Y-%m-%d'),
-                age_at_recording,
-                age_group,
-                max_frame
-            ))
-
-        except Exception as e:
-            logging.error(f"Error processing video {row.get('video_name', 'unknown')}: {str(e)}")
-
-    conn.commit()
-
-def setup_interaction_db(db_path: Path):
-    """
-    Sets up the SQLite database for storing detection results.
-    Only creates database and tables if they don't exist.
-    
-    Parameters:
+    Parameters
     ----------
     db_path : Path
         Path to the SQLite database file.
     """
-    if db_path.exists():
-        logging.info(f"Database already exists at {db_path}. Skipping creation.")
-        return
-    
     db_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
 
-    # Create tables
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Videos (
-            video_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            video_name TEXT UNIQUE,
-            child_id INTEGER,
-            recording_date DATE,
-            age_at_recording FLOAT,
-            age_group INTEGER,
-            max_frame INTEGER
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
+
+        # 1. Video Sessions
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS Videos (
+                video_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                video_name TEXT UNIQUE NOT NULL,
+                child_id INTEGER,
+                recording_date DATE,
+                age_at_recording REAL,
+                age_group INTEGER,
+                max_frame INTEGER
+            )
+        """)
+
+        # 2. Registered Model Metadata
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS Models (
+                model_id INTEGER PRIMARY KEY,
+                model_name TEXT UNIQUE NOT NULL,
+                description TEXT,
+                output_variables TEXT
+            )
+        """)
+
+        # 3. YOLO Face Detections & Proximity
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS FaceDetections (
+                detection_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                video_id INTEGER NOT NULL,
+                frame_number INTEGER NOT NULL,
+                model_id INTEGER NOT NULL,
+                confidence_score REAL NOT NULL,
+                x_min REAL NOT NULL,
+                y_min REAL NOT NULL,
+                x_max REAL NOT NULL,
+                y_max REAL NOT NULL,
+                age_class INTEGER CHECK(age_class IN (0, 1)),
+                proximity REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (video_id) REFERENCES Videos(video_id),
+                FOREIGN KEY (model_id) REFERENCES Models(model_id)
+            )
+        """)
+
+        # 4. YOLO Person Detections
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS PersonDetections (
+                detection_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                video_id INTEGER NOT NULL,
+                frame_number INTEGER NOT NULL,
+                model_id INTEGER NOT NULL,
+                confidence_score REAL NOT NULL,
+                age_class INTEGER DEFAULT 0,
+                x_min REAL NOT NULL,
+                y_min REAL NOT NULL,
+                x_max REAL NOT NULL,
+                y_max REAL NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (video_id) REFERENCES Videos(video_id),
+                FOREIGN KEY (model_id) REFERENCES Models(model_id)
+            )
+        """)
+
+        # 5. COCO Object / Book Detections
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS BookDetections (
+                detection_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                video_id INTEGER NOT NULL,
+                frame_number INTEGER NOT NULL,
+                model_id INTEGER NOT NULL,
+                confidence_score REAL NOT NULL,
+                x_min REAL NOT NULL,
+                y_min REAL NOT NULL,
+                x_max REAL NOT NULL,
+                y_max REAL NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (video_id) REFERENCES Videos(video_id),
+                FOREIGN KEY (model_id) REFERENCES Models(model_id)
+            )
+        """)
+
+        # 6. Dynamic Audio Diarization Classifications
+        audio_table_sql = build_audio_table_schema(DetectionConfig.AUDIO_CLASSES)
+        cursor.execute(audio_table_sql)
+
+        # -------------------------------------------------------------------
+        # B-Tree Indexes (Essential for Fast Multi-Modal Frame Alignment)
+        # -------------------------------------------------------------------
+        cursor.executescript("""
+            CREATE INDEX IF NOT EXISTS idx_face_lookup ON FaceDetections(video_id, frame_number);
+            CREATE INDEX IF NOT EXISTS idx_person_lookup ON PersonDetections(video_id, frame_number);
+            CREATE INDEX IF NOT EXISTS idx_book_lookup ON BookDetections(video_id, frame_number);
+            CREATE INDEX IF NOT EXISTS idx_audio_lookup ON AudioClassifications(video_id, frame_number);
+        """)
+
+        # Build dynamic output_variables mapping for registered audio classes
+        audio_outputs = {
+            cls: DetectionConfig.AUDIO_CLASS_DESCRIPTIONS.get(cls, cls.lower())
+            for cls in DetectionConfig.AUDIO_CLASSES
+        }
+
+        # Populate Model Registry
+        models_data = [
+            (
+                DetectionConfig.FACE_MODEL_ID,
+                "yolo12_face",
+                "Fine-tuned YOLOv12-l model for face detection and demographic age estimation.",
+                '{"age_class": {"0": "child_face", "1": "adult_face"}, "proximity": "continuous_proximity_0_to_1"}',
+            ),
+            (
+                DetectionConfig.PERSON_MODEL_ID,
+                "yolo12_person",
+                "Fine-tuned YOLOv12-l model for external social partner detection.",
+                '{"person": "detected_bounding_box"}',
+            ),
+            (
+                DetectionConfig.AUDIO_MODEL_ID,
+                "vtc_speech_classifier",
+                "Voice Type Classifier (VTC) for egocentric speech diarization.",
+                json.dumps(audio_outputs),
+            ),
+            (
+                DetectionConfig.BOOK_MODEL_ID,
+                "yolo_book_detector",
+                "Pretrained YOLO detector filtering illustrated storybook faces.",
+                '{"book": "bounding_box"}',
+            ),
+        ]
+
+        cursor.executemany(
+            """
+            INSERT INTO Models (model_id, model_name, description, output_variables)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(model_id) DO UPDATE SET
+                model_name=excluded.model_name,
+                description=excluded.description,
+                output_variables=excluded.output_variables
+            """,
+            models_data,
         )
-    ''')
 
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Models (
-            model_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            model_name TEXT UNIQUE,
-            description TEXT,
-            output_variables TEXT
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS FaceDetections (
-            detection_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            video_id INTEGER,
-            frame_number INTEGER,
-            model_id INTEGER,
-            confidence_score REAL,
-            x_min REAL,
-            y_min REAL,
-            x_max REAL,
-            y_max REAL,
-            age_class INTEGER CHECK(age_class IN (0, 1)),
-            proximity REAL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (video_id) REFERENCES Videos(video_id),
-            FOREIGN KEY (model_id) REFERENCES Models(model_id)
-        )
-    ''')
+        conn.commit()
 
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS PersonDetections (
-            detection_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            video_id INTEGER,
-            frame_number INTEGER,
-            model_id INTEGER,
-            confidence_score REAL,
-            x_min REAL,
-            y_min REAL,
-            x_max REAL,
-            y_max REAL,
-            age_class INTEGER CHECK(age_class IN (0, 1)),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (video_id) REFERENCES Videos(video_id),
-            FOREIGN KEY (model_id) REFERENCES Models(model_id)
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS BookDetections (
-            detection_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            video_id INTEGER,
-            frame_number INTEGER,
-            model_id INTEGER,
-            confidence_score REAL,
-            x_min REAL,
-            y_min REAL,
-            x_max REAL,
-            y_max REAL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (video_id) REFERENCES Videos(video_id),
-            FOREIGN KEY (model_id) REFERENCES Models(model_id)
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS AudioClassifications (
-            classification_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            video_id INTEGER,
-            frame_number INTEGER,
-            model_id INTEGER,
-            has_kchi INTEGER CHECK(has_kchi IN (0, 1)),
-            kchi_confidence_score REAL,
-            has_cds INTEGER CHECK(has_cds IN (0, 1)),
-            cds_confidence_score REAL,
-            has_ohs INTEGER CHECK(has_ohs IN (0, 1)),
-            ohs_confidence_score REAL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (video_id) REFERENCES Videos(video_id),
-            FOREIGN KEY (model_id) REFERENCES Models(model_id)
-        )
-    ''')
-
-    # Insert default models
-    cursor.execute('''
-        INSERT OR IGNORE INTO Models (model_name, description, output_variables) VALUES 
-        ('yolo_face_detection', 'YOLO model for face detection with age classification', 
-        '{"age_class": {"0": "child_face", "1": "adult_face"}, "proximity": "continuous_value"}'),
-        ('yolo_person_detection', 'CNN+RNN model for person presence classification',
-        '{"has_adult_person": {"0": "no", "1": "yes"}, "has_child_person": {"0": "no", "1": "yes"}}'),
-        ('audio_voice_classification', 'Audio model for voice type classification',
-        '{"has_kchi": {"0": "no", "1": "yes"}, "has_cds": {"0": "no", "1": "yes"}, "has_ohs": {"0": "no", "1": "yes"}}'),
-        ('kchi_vocalization', 'ALICE for KCHI vocalization analysis',
-        '{"phonemes": "float", "syllables": "float", "words": "float"}'),
-        ('yolo_book_detection', 'YOLO model for book detection',
-        '')
-    ''')
-    
-    conn.commit()
-    conn.close()
-    logging.info(f"Detection database created at {db_path}")
+    logger.info("Database schema and indexes initialized at: %s", db_path)
 
 
-def main(db_path: Path = DataPaths.INFERENCE_DB_PATH):
+def populate_video_metadata(
+    metadata_csv: Path,
+    db_path: Path,
+    raw_videos_dir: Optional[Path] = None,
+) -> None:
     """
-    Main function to set up the database and store video data.
-    
-    Parameters:
+    Parse recording session metadata and populate the Videos table.
+
+    Parameters
     ----------
+    metadata_csv : Path
+        Path to metadata.csv (delimited with semicolon).
     db_path : Path
-        Path to the SQLite database file
+        Target SQLite database path.
+    raw_videos_dir : Optional[Path], default=None
+        Directory containing raw MP4 video containers to compute max_frame.
     """
-    # Step 1: Setup database
-    setup_interaction_db(db_path)
-
-    # Step 2: Load CSV
-    try:
-        age_group_df = pd.read_csv(
-            DataPaths.SUBJECTS_CSV_PATH,
-            header=0, sep=';', encoding='utf-8'
-        )
-        age_group_df['age_at_recording'] = (
-            age_group_df['age_at_recording']
-            .astype(str)
-            .str.replace(',', '.', regex=False)
-            .astype(float)
-        )
-    except Exception as e:
-        logging.error(f"Failed to load CSV at {DataPaths.SUBJECTS_CSV_PATH}: {str(e)}")
+    if not metadata_csv.exists():
+        logger.warning("Metadata CSV not found at %s. Skipping video population.", metadata_csv)
         return
 
-    # Step 3: Store video data
     try:
-        conn = sqlite3.connect(db_path)
-        store_video_data(age_group_df, conn)
+        df = pd.read_csv(metadata_csv, sep=";", encoding="utf-8")
+        # Handle comma or dot decimal notations in age
+        df["age"] = (
+            df["age"].astype(str).str.replace(",", ".", regex=False).astype(float)
+        )
     except Exception as e:
-        logging.error(f"Database operation failed: {str(e)}")
-    finally:
-        conn.close()
+        logger.error("Failed to read metadata CSV: %s", e)
+        return
+
+    records = []
+    for _, row in df.iterrows():
+        video_name = str(row["video_name"]).strip()
+        child_id = int(row["child_id"]) if pd.notna(row["child_id"]) else None
+        age_at_recording = float(row["age"]) if pd.notna(row["age"]) else None
+        age_group = int(row["age_group"]) if pd.notna(row["age_group"]) else None
+
+        # Parse date formatted as dd.mm.yyyy
+        rec_date_str = None
+        if pd.notna(row.get("recording_date")):
+            try:
+                rec_date_str = pd.to_datetime(row["recording_date"], format="%d.%m.%Y").strftime("%Y-%m-%d")
+            except Exception:
+                rec_date_str = str(row["recording_date"])
+
+        # Locate raw video file if present to determine container frame count
+        max_frame = None
+        if raw_videos_dir and raw_videos_dir.exists():
+            matched = list(raw_videos_dir.glob(f"{video_name}.*"))
+            if matched:
+                video_file = matched[0]
+                if video_file.suffix.lower() == ".mp4":
+                    max_frame = get_max_frame_count(video_file)
+
+        records.append((video_name, child_id, rec_date_str, age_at_recording, age_group, max_frame))
+
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
+        cursor.executemany(
+            """
+            INSERT INTO Videos (video_name, child_id, recording_date, age_at_recording, age_group, max_frame)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(video_name) DO UPDATE SET
+                child_id=excluded.child_id,
+                recording_date=excluded.recording_date,
+                age_at_recording=excluded.age_at_recording,
+                age_group=excluded.age_group,
+                max_frame=COALESCE(excluded.max_frame, Videos.max_frame)
+            """,
+            records,
+        )
+        conn.commit()
+
+    logger.info("Populated metadata for %d video recordings into Videos table.", len(records))
+
+
+def main() -> None:
+    """CLI entrypoint to set up schema and populate video metadata."""
+    parser = argparse.ArgumentParser(description="Initialize and populate inference.db")
+    parser.add_argument(
+        "--db_path",
+        type=str,
+        default=str(AnalysisPaths.INFERENCE_DB),
+        help="Path to destination SQLite database",
+    )
+    parser.add_argument(
+        "--metadata_csv",
+        type=str,
+        default=str(AnalysisPaths.METADATA_CSV),
+        help="Path to recording metadata CSV",
+    )
+    parser.add_argument(
+        "--videos_dir",
+        type=str,
+        default=str(AnalysisPaths.VIDEOS_DIR),
+        help="Directory containing raw MP4 video files",
+    )
+    args = parser.parse_args()
+
+    db_path = Path(args.db_path)
+    metadata_csv = Path(args.metadata_csv)
+    videos_dir = Path(args.videos_dir) if args.videos_dir else None
+
+    setup_inference_schema(db_path)
+    populate_video_metadata(metadata_csv, db_path, raw_videos_dir=videos_dir)
+
 
 if __name__ == "__main__":
     main()
