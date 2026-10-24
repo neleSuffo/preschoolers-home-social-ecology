@@ -13,59 +13,61 @@ We present a fully automated pipeline designed to bridge the "measurement gap" i
 .
 ├── .github/                          # CI/CD and repository workflows
 │
-├── data/                             # Pipeline databases & raw detection outputs (Python)
-│   ├── inference.db                  # Frame-level multimodal detections (SQLite)
+├── data/                             # Precompiled databases & tabular metadata
+│   ├── inference.db                  # Frame-level multimodal detections
+│   ├── metadata.csv                  # Child age, recording dates, and participant IDs
 │   └── ground_truth_segments.csv     # 30.19-hr validation benchmark
 │
-├── paper/                            # Scientific manuscript, R analyses & figures
+├── models/                           # Fine-tuned model checkpoints (.pt)
+│   ├── yolov12_face_best.pt          # Hugging Face: Ego-child & adult face detector
+│   ├── yolov12_person_best.pt        # Hugging Face: Social partner body detector
+│   └── babyhubert_stc_best.pt        # Hugging Face: Key child vocalization classifier
+│
+├── paper/                            # Manuscript, Bayesian analyses & figures
 │   ├── analysis/                     # Standalone Bayesian analysis workflows
-│   │   ├── full_corpus_analysis.Rmd    # Full-corpus Bayesian models ($N = 107$)
+│   │   ├── full_corpus_analysis.Rmd    # Full-corpus Bayesian models (N = 107)
 │   │   └── gt_replication_analysis.Rmd # Ground-truth benchmark replication models
 │   │
 │   ├── data/                         # Tabular data & model bundles for Rmd compilation
 │   │   ├── pipeline_output/          # Pipeline segment outputs
 │   │   ├── cv_summary_final.csv      # 5-fold cross-validation performance metrics
-│   │   ├── participants_demographics.csv     # Sibling & kindergarten metadata
-│   │   ├── quantex_data_sheet_MASTER.csv     # Master participant & session tracking sheet
-│   │   └── social_ecology_estimates.rds      # Precomputed posterior estimates bundle
+│   │   ├── participants_demographics.csv # Sibling & kindergarten metadata
+│   │   └── social_ecology_estimates.rds  # Precomputed posterior estimates bundle
+│   │
 │   ├── images/                       # Figures, heatmaps, and qualitative sequence frames
-│   ├── apa.csl                       # APA citation style file
+│   ├── apa.csl                       # APA 7th edition citation style
 │   ├── bibliography.bib              # BibTeX reference database
-│   ├── manuscript.Rmd                # Main APA 7th Edition manuscript source (papaja)
+│   ├── manuscript.Rmd                # Main manuscript source (papaja)
 │   ├── manuscript.pdf                # Compiled manuscript PDF
-│   └── supplement.Rmd                # Supplementary Information source document
+│   ├── supplement.Rmd                # Supplementary Information source document
 │   └── supplement.pdf                # Compiled Supplementary Information PDF
-
 │
 ├── src/                              # Python processing pipeline
-│   ├── config.py                     # Central configuration (thresholds, parameters, paths)
-│   ├── constants.py                  # Database queries, column names, and mappings
-│   ├── poetry.lock                   # Deterministic Python dependency lockfile
+│   ├── config.py                     # Central configuration (thresholds, grid ranges, models)
+│   ├── constants.py                  # Directory paths, model asset metadata, and anchors
+│   │ 
+│   ├── feature_extraction/           # Raw cue extraction & database ingestion
+│   │   ├── download_assets.py        # Hugging Face weight & Zenodo database downloader
+│   │   ├── run_pipeline.py           # Master CLI orchestrator for feature extraction
+│   │   ├── run_video_detection.py    # Unified YOLO batch engine (face, person, book)
+│   │   ├── run_audio_rttm_ingestion.py # VTC audio diarization loader
+│   │   ├── setup_inference_db.py     # SQLite schema and index builder
+│   │   └── utils.py                  # Frame indexing and progress-log utilities
+│   │
+│   ├── models/                       # Inference architectures & qualitative visualizers
+│   │   ├── proximity.py              # Logarithmic face proximity calculation
+│   │   └── run_yolo.py               # Qualitative visualizer with TP/FP/FN overlays
+│   │
+│   ├── pipeline/                     # Core classification & aggregation machinery
+│   │   ├── frame_level_rules.py      # Vectorized multi-modal rule evaluation (Rules 1–5)
+│   │   ├── segment_aggregation.py    # PELT change-point segmentation & temporal smoothing
+│   │   ├── pipeline_runner.py        # Execution runner for single/batch videos
+│   │   └── pipeline_orchestrator.py  # Multi-process parallel batch controller
 │   │
 │   ├── evaluation/                   # Model validation & cross-validation tuning
 │   │   ├── eval_irr.py               # Human inter-rater reliability (Cohen's Kappa)
 │   │   ├── eval_segment_performance.py # Frame- and segment-level metric evaluations
 │   │   └── tune_hyperparameters.py   # Group 5-fold cross-validation grid search
-│   │
-│   ├── feature_extraction/           # Raw cue extraction & DB population
-│   │   ├── setup_inference_db.py     # Schema initialization for inference.db
-│   │   ├── run_person_detection.py   # YOLOv12 person detector inference
-│   │   ├── run_face_proximity.py     # YOLOv12 face detector & proximity estimation
-│   │   ├── run_book_detection.py     # Picture book detector (false-positive filter)
-│   │   └── populate_speech_db.py     # BabyHuBERT diarization timestamp alignment
-│   │
-│   ├── models/                       # Underlying architectures & annotation parsers
-│   │   ├── face/                     # YOLO face detector training configs & scripts
-│   │   ├── person/                   # YOLO person detector fine-tuning workflows
-│   │   ├── proximity/                # Logarithmic proximity calibration
-│   │   ├── process_videos.py         # Batch frame processing utilities
-│   │   └── setup_annotations_db.py   # XML annotation database importer
-│   │
-│   ├── pipeline/                     # Core classification & aggregation machinery
-│   │   ├── pipeline_frame_level_analysis.py # Vectorized rule evaluation (Rules 1–5)
-│   │   ├── pipeline_video_level_analysis.py # PELT changepoint segmentation & smoothing
-│   │   ├── pipeline_runner.py        # Execution runner for single/batch videos
-│   │   └── pipeline_orchestrator.py  # Multi-process parallel batch controller
 │   │
 │   ├── research_questions/           # Downstream behavioral analyses (RQs)
 │   │   ├── rq_02_kcs.py              # Child vocalization (KCS) extractor
@@ -80,10 +82,9 @@ We present a fully automated pipeline designed to bridge the "measurement gap" i
 │       └── plot_segments_timeline.py # GT vs. predicted timeline bar plots
 │
 ├── .gitignore
-├── poetry.toml                       # Poetry local settings
-├── pyproject.toml                    # Poetry dependencies & project configuration
-├── README.md                         # Repository documentation
-└── settings.toml                     # Global pipeline settings
+├── poetry.lock                       # Deterministic Python dependency lockfile
+├── pyproject.toml                    # Poetry package configuration & dependencies
+└── README.md                         # Repository documentation
 ```
 
 ## Installation
