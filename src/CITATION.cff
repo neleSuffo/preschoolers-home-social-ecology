@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this software or analysis pipeline, please cite it as below."
+authors:
+  - family-names: "Suffo"
+    given-names: "Nele-Pauline"
+    affiliation: "Leuphana University Lüneburg"
+  - family-names: "Suffo"
+    given-names: "Anas"
+    affiliation: "Leuphana University Lüneburg"
+  - family-names: "Martin"
+    given-names: "Pierre-Etienne"
+    affiliation: "Max Planck Institute for Evolutionary Anthropology"
+  - family-names: "Kim"
+    given-names: "Yujin"
+    affiliation: "Max Planck Institute for Evolutionary Anthropology"
+  - family-names: "Zahra"
+    given-names: "Anam"
+    affiliation: "Max Planck Institute for Evolutionary Anthropology"
+  - family-names: "Haun"
+    given-names: "Daniel"
+    affiliation: "Max Planck Institute for Evolutionary Anthropology"
+  - family-names: "Bohn"
+    given-names: "Manuel"
+    affiliation: "Leuphana University Lüneburg & Max Planck Institute for Evolutionary Anthropology"
+
+title: "preschoolers-home-social-ecology: Automated Multimodal Processing Pipeline for Naturalistic Home Experiences"
+version: 1.0.0
+date-released: 2026-10-25
+url: "https://github.com/neleSuffo/preschoolers-social-ecology"
