@@ -1,8 +1,15 @@
+"""
+src/visualization/plot_multimodal_social_state_frames.py
+
+Generates publication-ready exemplar sequence frames with high-contrast pastel detection badges,
+a structured 'Classification Rules' checklist HUD card, and synchronized acoustic badges.
+"""
+
 import argparse
 import logging
-import re
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -11,39 +18,43 @@ from PIL import Image
 from supervision import Detections
 from ultralytics import YOLO
 
-from src.constants import Analysis, FaceDetection, PersonDetection
-from src.models.proximity.estimate_proximity import calculate_proximity
+from src.config import AnalysisConfig
+from src.constants import AnalysisPaths, ModelAssets
+from src.models.proximity import calculate_proximity
 
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
+logger = logging.getLogger(__name__)
 
 # --- Standardized Pastel Palette (BGR) ---
-COLOR_AUDIO_BGR = (209, 192, 242)   # Soft Rose
-COLOR_FACE_BGR = (195, 175, 140)    # Slate / Teal Gray
-COLOR_PERSON_BGR = (175, 215, 185)  # Light Sage Green
+COLOR_AUDIO_BGR: Tuple[int, int, int] = (209, 192, 242)   # Soft Rose
+COLOR_FACE_BGR: Tuple[int, int, int] = (195, 175, 140)    # Slate / Teal Gray
+COLOR_PERSON_BGR: Tuple[int, int, int] = (175, 215, 185)  # Light Sage Green
 
 # UI styling (White Cards with Dark Text)
-COLOR_BOX_BACKING = (20, 20, 22)
-COLOR_TEXT_DARK = (20, 20, 22)
-COLOR_TEXT_LIGHT = (250, 250, 250)
+COLOR_BOX_BACKING: Tuple[int, int, int] = (20, 20, 22)
+COLOR_TEXT_DARK: Tuple[int, int, int] = (20, 20, 22)
+COLOR_TEXT_LIGHT: Tuple[int, int, int] = (250, 250, 250)
 
 # Card Inversion Variables
-COLOR_CARD_BG = (255, 255, 255)     # Solid White Card Background
-COLOR_CARD_BORDER = (180, 180, 185) # Crisp Outer Outline
-COLOR_CARD_LINE = (210, 210, 215)   # Internal Divider Lines
-COLOR_INACTIVE_DARK = (130, 130, 135)
-COLOR_ACTIVE_CHECK = (35, 165, 35)  # Deeper green for contrast on white
+COLOR_CARD_BG: Tuple[int, int, int] = (255, 255, 255)     # Solid White Card Background
+COLOR_CARD_BORDER: Tuple[int, int, int] = (180, 180, 185) # Outer Outline
+COLOR_CARD_LINE: Tuple[int, int, int] = (210, 210, 215)   # Internal Divider Lines
+COLOR_INACTIVE_DARK: Tuple[int, int, int] = (130, 130, 135)
+COLOR_ACTIVE_CHECK: Tuple[int, int, int] = (35, 165, 35)  # Deep Green
 
 # Bounding box dimensions
-BOX_THICKNESS = 10
-BACKING_OFFSET = 5
-BADGE_PAD = 14
-TEXT_THICKNESS = 3
-FONT = cv2.FONT_HERSHEY_SIMPLEX
+BOX_THICKNESS: int = 10
+BACKING_OFFSET: int = 5
+BADGE_PAD: int = 14
+TEXT_THICKNESS: int = 3
+FONT: int = cv2.FONT_HERSHEY_SIMPLEX
 
 
 def load_csv_data(csv_path: Path) -> pd.DataFrame:
+    """Read a CSV file with automatic separator fallback and column whitespace stripping."""
     if not csv_path.exists():
         raise FileNotFoundError(f"CSV file not found at: {csv_path}")
     try:
@@ -56,9 +67,8 @@ def load_csv_data(csv_path: Path) -> pd.DataFrame:
     return df
 
 
-def parse_filename_identifiers(
-    image_path: Path,
-) -> Tuple[Optional[str], Optional[int]]:
+def parse_filename_identifiers(image_path: Path) -> Tuple[Optional[str], Optional[int]]:
+    """Extract recording video stem and frame index from an image filename."""
     stem = image_path.stem
     match = re.search(r"^(.*?)(?:_frame|_)?_(\d+)$", stem)
     if match:
@@ -71,6 +81,7 @@ def parse_filename_identifiers(
 def lookup_segment_social_state(
     segments_df: pd.DataFrame, video_name: str, frame_idx: int
 ) -> str:
+    """Find the aggregated social state assigned to a given video frame."""
     seg_sub = segments_df[
         segments_df["video_name"].astype(str).str.strip() == video_name
     ].copy()
@@ -93,7 +104,7 @@ def lookup_segment_social_state(
     if matched_seg.empty:
         return "Alone"
 
-    raw_type = matched_seg.iloc[0].get("interaction_type", "Alone")
+    raw_type = matched_seg.iloc[0].get("social_state", matched_seg.iloc[0].get("interaction_type", "Alone"))
     state_map = {
         1: "Interacting",
         2: "Available",
@@ -111,10 +122,11 @@ def lookup_segment_social_state(
 def run_model_inference(
     model: YOLO, image_path: Path
 ) -> Tuple[np.ndarray, Detections]:
+    """Execute YOLO inference on an image and return raw image array and supervision Detections."""
     image = cv2.imread(str(image_path))
     if image is None:
         raise ValueError(f"Failed to load image from: {image_path}")
-    output = model(Image.open(image_path))
+    output = model(Image.open(image_path), verbose=False)
     detections = Detections.from_ultralytics(output[0])
     return image, detections
 
@@ -127,7 +139,7 @@ def draw_labeled_box(
     font_scale: float = 2.5,
     place_above: bool = True,
 ) -> np.ndarray:
-    """Draws a prominent box with bold dark outlines and enlarged, filled pastel badges."""
+    """Draw a prominent box with bold dark outlines and filled pastel badges."""
     annotated = image.copy()
     img_h, img_w = annotated.shape[:2]
     x1, y1, x2, y2 = map(int, bbox)
@@ -172,13 +184,13 @@ def draw_labeled_box(
 
 def draw_rule_criteria_card(
     image: np.ndarray,
-    rules: List[Dict[str, any]],
+    rules: List[Dict[str, Any]],
     align: str = "right",
     alpha: float = 0.94,
     margin: int = 30,
     bottom_clearance: int = 0,
 ) -> Tuple[np.ndarray, Tuple[int, int, int, int]]:
-    """Renders the white 'Classification Rules' HUD card and returns its coordinates."""
+    """Render the white 'Classification Rules' HUD card and return its boundary coordinates."""
     annotated = image.copy()
     img_h, img_w = annotated.shape[:2]
 
@@ -194,7 +206,6 @@ def draw_rule_criteria_card(
 
     header_text = "Classification Rules"
 
-    # Pre-render rule items
     rendered_items = []
     for r in rules:
         sym = "[v]" if r["active"] else "[ ]"
@@ -203,10 +214,17 @@ def draw_rule_criteria_card(
             "text": rule_str,
             "scale": rule_scale,
             "active": r["active"],
-            "is_detail": False
+            "is_detail": False,
         })
+        if r.get("detail"):
+            rendered_items.append({
+                "text": f"   {r['detail']}",
+                "scale": rule_scale * 0.75,
+                "active": r["active"],
+                "is_detail": True,
+            })
 
-    # Dynamic dimensions
+    # Dynamic dimension calculations
     max_w = cv2.getTextSize(header_text, FONT, header_scale, ui_thick)[0][0]
     for item in rendered_items:
         w = cv2.getTextSize(item["text"], FONT, item["scale"], ui_thick)[0][0]
@@ -226,18 +244,17 @@ def draw_rule_criteria_card(
     total_h += pad_y
     card_h = total_h
 
-    # Horizontal coordinate positioning based on alignment
     if align.lower() == "left":
         x1 = margin
         x2 = x1 + card_w
-    else:  # default right
+    else:
         x2 = img_w - margin
         x1 = x2 - card_w
 
     y2 = img_h - margin - bottom_clearance
     y1 = y2 - card_h
-    
-    # White Background
+
+    # White semi-transparent card background
     overlay = annotated.copy()
     cv2.rectangle(overlay, (x1, y1), (x2, y2), COLOR_CARD_BG, -1)
     cv2.addWeighted(overlay, alpha, annotated, 1.0 - alpha, 0, annotated)
@@ -247,14 +264,14 @@ def draw_rule_criteria_card(
     curr_y = y1 + pad_y + header_h
     cv2.putText(
         annotated, header_text, (x1 + pad_x, curr_y),
-        FONT, header_scale, COLOR_TEXT_DARK, ui_thick, cv2.LINE_AA
+        FONT, header_scale, COLOR_TEXT_DARK, ui_thick, cv2.LINE_AA,
     )
 
-    # Divider Line
+    # Divider line
     curr_y += line_vertical_gap
     cv2.line(
         annotated, (x1 + pad_x, curr_y), (x2 - pad_x, curr_y),
-        COLOR_CARD_LINE, 2, cv2.LINE_AA
+        COLOR_CARD_LINE, 2, cv2.LINE_AA,
     )
     curr_y += line_vertical_gap
 
@@ -271,7 +288,7 @@ def draw_rule_criteria_card(
             text_color = COLOR_TEXT_DARK if active else COLOR_INACTIVE_DARK
             cv2.putText(
                 annotated, text, (x1 + pad_x, curr_y),
-                FONT, scale, text_color, 2, cv2.LINE_AA
+                FONT, scale, text_color, 2, cv2.LINE_AA,
             )
         else:
             sym = text[:3]
@@ -281,12 +298,12 @@ def draw_rule_criteria_card(
 
             cv2.putText(
                 annotated, sym, (x1 + pad_x, curr_y),
-                FONT, scale, sym_color, ui_thick, cv2.LINE_AA
+                FONT, scale, sym_color, ui_thick, cv2.LINE_AA,
             )
             sym_w = cv2.getTextSize(sym, FONT, scale, ui_thick)[0][0]
             cv2.putText(
                 annotated, label, (x1 + pad_x + sym_w, curr_y),
-                FONT, scale, text_color, ui_thick, cv2.LINE_AA
+                FONT, scale, text_color, ui_thick, cv2.LINE_AA,
             )
 
         is_last = (i == len(rendered_items) - 1)
@@ -306,11 +323,10 @@ def draw_audio_badge_below(
     spacing: int = 14,
     font_scale: float = 2.5,
 ) -> np.ndarray:
-    """Renders a standalone Rose audio badge below the classification card matching Person/Face badge styling."""
+    """Render a standalone Rose audio badge below the classification card."""
     annotated = image.copy()
     c_x1, _, c_x2, c_y2 = card_bounds
 
-    # Build audio content
     audio_parts = []
     if has_kcds:
         audio_parts.append("KCDS")
@@ -322,21 +338,20 @@ def draw_audio_badge_below(
     label = f"Audio: {' + '.join(audio_parts)}" if audio_parts else "Audio: None"
 
     (text_w, text_h), baseline = cv2.getTextSize(label, FONT, font_scale, TEXT_THICKNESS)
-
     badge_w = text_w + (BADGE_PAD * 2)
     badge_h = text_h + baseline + (BADGE_PAD * 2)
 
     if align.lower() == "left":
         x1 = c_x1
         x2 = x1 + badge_w
-    else:  # default right
+    else:
         x2 = c_x2
         x1 = x2 - badge_w
 
     y1 = c_y2 + spacing
     y2 = y1 + badge_h
 
-    # Filled Soft Rose with Dark Outline (matching Person/Face badges)
+    # Solid Soft Rose backing with dark outline
     cv2.rectangle(annotated, (x1, y1), (x2, y2), COLOR_AUDIO_BGR, -1)
     cv2.rectangle(annotated, (x1, y1), (x2, y2), COLOR_BOX_BACKING, 3)
 
@@ -358,8 +373,9 @@ def draw_audio_badge_below(
 
 def build_rules_checklist_for_segment_state(
     segment_state: str, row: Optional[pd.Series]
-) -> List[Dict[str, any]]:
-    def to_bool(val) -> bool:
+) -> List[Dict[str, Any]]:
+    """Determine active states for rules R1-R5 based on the sampled frame's feature evaluations."""
+    def to_bool(val: Any) -> bool:
         if pd.isna(val):
             return False
         return bool(int(val)) if isinstance(val, (int, float, np.number)) else bool(val)
@@ -370,7 +386,8 @@ def build_rules_checklist_for_segment_state(
 
     r4_persistence = to_bool(row.get("person_seen_recently", False)) if row is not None else False
     presence_score = row.get("presence_score", 0.0) if row is not None else 0.0
-    is_visual_anchor = presence_score >= 0.15
+    presence_floor = AnalysisConfig.TERTIARY_PARAMETERS["INSTANT_CONFIDENCE_THRESHOLD"]
+    is_visual_anchor = presence_score >= presence_floor
     r5_intermittent_speech = (
         to_bool(row.get("is_sustained_ohs", False)) and is_visual_anchor
     ) if row is not None else False
@@ -409,6 +426,7 @@ def draw_frame_number_badge(
     pad_x: int = 24,
     pad_y: int = 16,
 ) -> np.ndarray:
+    """Render a white badge displaying the frame number in the upper corner."""
     annotated = image.copy()
     img_h, img_w = annotated.shape[:2]
 
@@ -416,20 +434,19 @@ def draw_frame_number_badge(
     ui_thick = 3
 
     (text_w, text_h), baseline = cv2.getTextSize(text, FONT, font_scale, ui_thick)
-
     card_w = text_w + (pad_x * 2)
     card_h = text_h + (pad_y * 2)
 
     if align.lower() == "left":
         x1 = margin
         x2 = x1 + card_w
-    else:  # default right
+    else:
         x2 = img_w - margin
         x1 = x2 - card_w
 
     y1 = margin
     y2 = y1 + card_h
-    
+
     overlay = annotated.copy()
     cv2.rectangle(overlay, (x1, y1), (x2, y2), COLOR_CARD_BG, -1)
     cv2.addWeighted(overlay, 0.94, annotated, 0.06, 0, annotated)
@@ -458,7 +475,8 @@ def process_image(
     face_model: YOLO,
     person_model: YOLO,
     align: str = "right",
-) -> Optional[Dict]:
+) -> Optional[Dict[str, Any]]:
+    """Annotate a single image with bounding boxes, HUD checklist, and acoustic badge."""
     video_name, video_frame = parse_filename_identifiers(image_path)
     if video_name is None or video_frame is None:
         raise ValueError(f"Could not infer video_name or video_frame from {image_path.name}")
@@ -472,7 +490,7 @@ def process_image(
 
     rules = build_rules_checklist_for_segment_state(segment_state, frame_row)
 
-    def to_bool(val) -> bool:
+    def to_bool(val: Any) -> bool:
         if pd.isna(val):
             return False
         return bool(int(val)) if isinstance(val, (int, float, np.number)) else bool(val)
@@ -501,22 +519,21 @@ def process_image(
         face_results.xyxy, face_results.confidence, face_results.class_id
     ):
         x1, y1, x2, y2 = map(int, bbox)
-        prox = calculate_proximity([x1, y1, x2, y2], cls_id)
-        if isinstance(prox, (list, tuple, np.ndarray)):
-            prox = float(prox[0])
+        prox = calculate_proximity([x1, y1, x2, y2], int(cls_id))
+        prox_val = float(prox) if prox is not None else 0.0
         annotated = draw_labeled_box(
             annotated,
             bbox,
-            f"Face ({conf:.2f}), prox: {prox:.2f}",
+            f"Face ({conf:.2f}), prox: {prox_val:.2f}",
             COLOR_FACE_BGR,
             font_scale=2.5,
             place_above=True,
         )
 
-    # 1. Frame Number Badge (Top-Right)
+    # 1. Frame Number Badge (Top Corner)
     annotated = draw_frame_number_badge(annotated, int(video_frame), align=align, margin=30)
-    # 2. Classification Rules Card + Separate Rose Audio Badge (Bottom-Right)
-    # Estimate clearance needed below the card for the audio badge + spacing
+
+    # 2. Rules Card & Audio Badge
     sample_text = "Audio: KCDS + KCS + OHS"
     (text_w, text_h), baseline = cv2.getTextSize(sample_text, FONT, 2.0, TEXT_THICKNESS)
     audio_badge_h = text_h + baseline + (BADGE_PAD * 2)
@@ -533,7 +550,7 @@ def process_image(
     output_dir.mkdir(parents=True, exist_ok=True)
     out_path = output_dir / f"{image_path.stem}_multimodal_annotated.jpg"
     cv2.imwrite(str(out_path), final_output, [cv2.IMWRITE_JPEG_QUALITY, 95])
-    logging.info(f"Saved annotated frame to: {out_path}")
+    logger.info("Saved annotated frame to: %s", out_path)
 
     if frame_row is not None:
         row_dict = frame_row.to_dict()
@@ -549,29 +566,63 @@ def process_image(
         }
 
 
-def main():
+def main() -> None:
+    """CLI entrypoint for rendering multi-modal exemplar frames."""
     parser = argparse.ArgumentParser(
         description="Annotate Frame with Large Text Detections, Clean Card, and Separate Audio Badge"
     )
-    parser.add_argument("--image_path", type=str, required=True, help="Path to image file or folder.")
-    parser.add_argument("--frame_csv", type=str, default=str(Analysis.FRAME_LEVEL_INTERACTIONS_CSV), help="Path to frame_level_social_interactions.csv.")
-    parser.add_argument("--segments_csv", type=str, default=str(Analysis.INTERACTION_SEGMENTS_CSV), help="Path to interaction_segments.csv.")
-    parser.add_argument("--output_dir", type=str, default=str(Analysis.FINAL_OUTPUT_FOLDER / "multimodal_state_examples"), help="Target output folder.")
-    parser.add_argument("--align", type=str, choices=["left", "right"], default="right", help="Horizontal alignment of HUD cards and badges ('right' by default, or 'left').")
+    parser.add_argument(
+        "--image_path",
+        type=Path,
+        required=True,
+        help="Path to image file or directory of images",
+    )
+    parser.add_argument(
+        "--frame_csv",
+        type=Path,
+        default=AnalysisPaths.FRAME_INTERACTIONS_CSV,
+        help="Path to frame_level_social_interactions.csv",
+    )
+    parser.add_argument(
+        "--segments_csv",
+        type=Path,
+        default=AnalysisPaths.INTERACTION_SEGMENTS_CSV,
+        help="Path to interaction_segments.csv",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=Path,
+        default=AnalysisPaths.OUTPUT_FOLDER / "multimodal_state_examples",
+        help="Destination directory for annotated frames",
+    )
+    parser.add_argument(
+        "--align",
+        choices=["left", "right"],
+        default="right",
+        help="Horizontal alignment of HUD cards ('right' by default)",
+    )
     args = parser.parse_args()
 
-    logging.info(f"Loading frame interactions from: {args.frame_csv}")
-    frames_df = load_csv_data(Path(args.frame_csv))
+    logger.info("Loading frame interactions from: %s", args.frame_csv)
+    frames_df = load_csv_data(args.frame_csv)
 
-    logging.info(f"Loading interaction segments from: {args.segments_csv}")
-    segments_df = load_csv_data(Path(args.segments_csv))
+    logger.info("Loading interaction segments from: %s", args.segments_csv)
+    segments_df = load_csv_data(args.segments_csv)
 
-    logging.info("Loading YOLO weights...")
-    face_model = YOLO(FaceDetection.TRAINED_WEIGHTS_PATH)
-    person_model = YOLO(PersonDetection.TRAINED_WEIGHTS_PATH)
+    # Verify model weights before executing inference
+    if not ModelAssets.FACE_MODEL_PATH.exists() or not ModelAssets.PERSON_MODEL_PATH.exists():
+        logger.error(
+            "Model weights missing in %s. Please run python -m src.feature_extraction.download_assets first.",
+            ModelAssets.FACE_MODEL_PATH.parent,
+        )
+        return
 
-    input_p = Path(args.image_path)
-    output_p = Path(args.output_dir)
+    logger.info("Loading YOLO weights...")
+    face_model = YOLO(str(ModelAssets.FACE_MODEL_PATH))
+    person_model = YOLO(str(ModelAssets.PERSON_MODEL_PATH))
+
+    input_p = args.image_path
+    output_p = args.output_dir
     output_p.mkdir(parents=True, exist_ok=True)
 
     extracted_records = []
@@ -582,6 +633,7 @@ def main():
             + list(input_p.glob("*.png"))
             + list(input_p.glob("*.PNG"))
         )
+        logger.info("Found %d image(s) to annotate in %s", len(imgs), input_p)
         for img in imgs:
             row_info = process_image(img, output_p, frames_df, segments_df, face_model, person_model, args.align)
             if row_info:
@@ -600,8 +652,8 @@ def main():
 
         csv_out_path = output_p / "selected_frames_audit.csv"
         audit_df.to_csv(csv_out_path, sep=";", index=False)
-        logging.info(f"Saved audit CSV to: {csv_out_path}")
+        logger.info("Saved audit CSV to: %s", csv_out_path)
 
 
 if __name__ == "__main__":
-    exit(main())
+    main()

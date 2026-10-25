@@ -37,8 +37,7 @@ class ModelAssets:
     AUDIO_MODEL_PATH = BasePaths.MODELS_DIR / AUDIO_WEIGHTS_NAME
 
     # Voice Type Classifier output
-    VTC_RTTM_FILE = BasePaths.DATA_DIR / "diarization" / "all.rttm"
-
+    VTC_RTTM_FILE = BasePaths.DATA_DIR / "diarization_all.rttm"
 
 class PipelineLogs:
     """Progress tracking text files for multi-stage video extraction."""
@@ -67,6 +66,9 @@ class Proximity:
 class AnalysisPaths:
     """Database locations, tabular analysis artifacts, and visualization directories."""
 
+    # Ground truth annotations for social interactions
+    GT_SEGMENTS_CSV = BasePaths.DATA_DIR / "ground_truth_segments.csv"
+    
     # Participant metadata and video registry
     METADATA_CSV = BasePaths.DATA_DIR / "metadata.csv"
     
@@ -74,13 +76,14 @@ class AnalysisPaths:
     INFERENCE_DB = BasePaths.DATA_DIR / "inference.db"
 
     # Input video registry
-    VIDEOS_LIST = BasePaths.DATA_DIR / "video_list.txt"
+    VIDEOS_LIST_TUNING = BasePaths.DATA_DIR / "video_list_tuning.txt"
+    VIDEO_LIST_INFERENCE = BasePaths.DATA_DIR / "video_list_inference.txt"
     VIDEOS_DIR = BasePaths.DATA_DIR / "videos"
 
     # Root directory containing per-video subfolders of extracted frames
     # (e.g. data/videos_processed/<video_name>/frame_000010.jpg)
     FRAMES_DIR = BasePaths.DATA_DIR / "videos_processed"
-
+    
     # Pipeline output directory
     OUTPUT_FOLDER = BasePaths.OUTPUT_DIR / "pipeline_outputs"
     HEATMAP_DIR = OUTPUT_FOLDER / "heatmaps"
@@ -89,7 +92,6 @@ class AnalysisPaths:
     # Tabular outputs
     FRAME_INTERACTIONS_CSV = OUTPUT_FOLDER / "frame_level_social_interactions.csv"
     INTERACTION_SEGMENTS_CSV = OUTPUT_FOLDER / "interaction_segments.csv"
-    INTERACTION_COMPOSITION_CSV = OUTPUT_FOLDER / "05_interaction_composition.csv"
 
     KCS_SUMMARY_CSV = OUTPUT_FOLDER / "02_kcs_summary.csv"
     GLOBAL_KCS_SUMMARY_CSV = OUTPUT_FOLDER / "02a_global_kcs_summary.csv"
@@ -99,6 +101,7 @@ class AnalysisPaths:
     GLOBAL_TURN_TAKING_CSV = OUTPUT_FOLDER / "04a_global_turn_taking_summary.csv"
     TURN_DURATION_CSV = OUTPUT_FOLDER / "04b_turn_durations_summary.csv"
     TURN_GAPS_CSV = OUTPUT_FOLDER / "04c_turn_gaps_summary.csv"
+    CUE_SPECIFICITY_CSV = OUTPUT_FOLDER / "05_cue_specificity.csv"
 
     # Diagnostic data for figures
     FACE_HEATMAP_PNG = OUTPUT_FOLDER / "face_heatmaps_per_state.png"

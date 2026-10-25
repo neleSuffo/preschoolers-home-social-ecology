@@ -3,14 +3,6 @@ src/config.py
 
 Runtime hyperparameters, multimodal fusion settings, and grid-search ranges.
 """
-
-from dynaconf import Dynaconf
-
-SETTINGS = Dynaconf(
-    envvar_prefix="DYNACONF",
-    settings_files=["settings.toml", ".secrets.toml"],
-)
-
 class VideoSpecs:
     """Raw egocentric video recording specifications and extraction rates."""
 

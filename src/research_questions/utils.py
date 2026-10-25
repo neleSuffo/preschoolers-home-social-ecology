@@ -1,243 +1,311 @@
-import re
-import pandas as pd
-import numpy as np
+"""
+src/research_questions/utils.py
+
+Shared utilities for behavioral research question extraction:
+- NIST RTTM speech diarization parsing.
+- Inter-speaker interval merging and vocalization duration aggregation.
+- Dense second-level array label reconstruction.
+- Participant Child ID extraction and cumulative timeline fold boundary calculation.
+"""
+
 from pathlib import Path
-from typing import List, Tuple
-<<<<<<< Updated upstream
-from constants import AudioClassification
-=======
-from src.constants import AudioClassification
->>>>>>> Stashed changes
+import re
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-def create_second_level_labels(segments_df: pd.DataFrame, 
-                               video_duration_seconds: int) -> np.ndarray:
+import numpy as np
+import pandas as pd
+
+from src.constants import ModelAssets
+
+
+def time_to_seconds(time_str: Union[str, float, int]) -> Optional[float]:
     """
-    Creates a second-by-second label array for a video based on segments. 
-    
-    Parameters:
+    Convert MM:SS, HH:MM:SS, or numeric strings to float seconds.
+
+    Parameters
     ----------
-    segments_df: pd.DataFrame
-        DataFrame containing 'start_time_sec', 'end_time_sec', and 'interaction_type' columns.
-    video_duration_seconds: int
-        Total duration of the video in seconds.
-    
-    Returns:
+    time_str : Union[str, float, int]
+        Time representation (e.g., '01:30', '01:15:30', or 90.0).
+
+    Returns
     -------
-    np.ndarray
-        An array of shape (video_duration_seconds,) where each index corresponds to a second in the
+    Optional[float]
+        Time in seconds, or None if conversion fails.
     """
-    labels = np.full(video_duration_seconds, None, dtype=object)
-    
-    # Ensure time columns exist and are numeric
-    if 'start_time_sec' not in segments_df.columns or 'end_time_sec' not in segments_df.columns:
-        if 'start_time_min' in segments_df.columns and 'end_time_min' in segments_df.columns:
-             segments_df['start_time_sec'] = segments_df['start_time_min'].apply(time_to_seconds)
-             segments_df['end_time_sec'] = segments_df['end_time_min'].apply(time_to_seconds)
-        else:
-            # Cannot process without time in seconds
-            return labels
+    if pd.isna(time_str):
+        return None
 
-    for _, segment in segments_df.iterrows():
-        try:
-            # Use floating point conversion then rounding for robustness
-            start_sec = int(np.round(float(segment['start_time_sec'])))
-        except Exception:
-            start_sec = 0
-            
-        try:
-            end_sec = int(np.round(float(segment['end_time_sec'])))
-            # Clip end_sec to prevent out-of-bounds indexing
-            # Note: We are using [start, end) second interval in the IRR script, 
-            # but the original script logic used [start, end] seconds, 
-            # so we maintain that original logic here for compatibility: labels[start:end + 1]
-            end_sec = min(end_sec, video_duration_seconds - 1)
-        except Exception:
-            # If end_sec is invalid, the segment is effectively 0 duration
-            end_sec = start_sec
-
-        interaction_type = str(segment['interaction_type']).lower()
-        start_sec = max(0, start_sec)
-
-        # Assign interaction type to the range of seconds (inclusive start and end second index)
-        if start_sec <= end_sec: 
-            labels[start_sec:end_sec + 1] = interaction_type
-           
-    return labels
-
-def time_to_seconds(time_str: str) -> float:
-    """
-    Converts MM:SS or float seconds string to float seconds.
-    
-    Parameters:
-    ----------
-    time_str : str
-        Time in MM:SS format or as a float string.
-        
-    Returns:
-    -------
-    float or None
-        Time in seconds as a float, or None if conversion fails.
-    """
     try:
-        parts = str(time_str).split(':')
+        parts = str(time_str).strip().split(":")
         if len(parts) == 2:
-            # MM:SS format
             minutes, seconds = map(float, parts)
-            return minutes * 60 + seconds
+            return minutes * 60.0 + seconds
         elif len(parts) == 3:
-            # HH:MM:SS format
             hours, minutes, seconds = map(float, parts)
-            return hours * 3600 + minutes * 60 + seconds
+            return hours * 3600.0 + minutes * 60.0 + seconds
         else:
             return float(time_str)
-    except:
+    except (ValueError, TypeError):
         return None
-    
-def extract_child_id(video_name: str) -> str:
+
+
+def extract_child_id(video_name: str) -> Optional[str]:
     """
-    Extracts the 6-digit child ID from a video name string.
-    Example: 'id123456_video.mp4' -> '123456'
-    
-    Parameters:
+    Extract the 6-digit child ID from a recording filename or video stem.
+
+    Examples:
+        - 'id123456_session01.mp4' -> '123456'
+        - 'quantex_ID654321_02' -> '654321'
+        - '123456_01.MP4' -> '123456'
+
+    Parameters
     ----------
     video_name : str
-        The name of the video file.
-        
-    Returns:
-    -------
-    str or None
-        The extracted child ID, or None if not found.
-    """
-    match = re.search(r'id(\d{6})', video_name)
-    return match.group(1) if match else None
+        The filename or stem of the video recording.
 
-def merge_overlapping_vocalizations(vocs_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Merge overlapping vocalizations from the same speaker in the same video.
-    
-    Parameters:
-    ----------
-    vocs_df : pd.DataFrame
-        DataFrame containing vocalization information with columns: 'video_name', 'speaker', 'start
-        _time_seconds', 'end_time_seconds', and 'speech_type'.
-    
-    Returns:
+    Returns
     -------
-    pd.DataFrame
-        A DataFrame with merged vocalizations, where overlapping vocalizations from the same speaker
-        in the same video are merged into a single vocalization with the earliest start time and latest
+    Optional[str]
+        Extracted 6-digit string ID, or None if not found.
     """
-    merged_vocs = []
-    
-    # Group by video and speaker
-    for (video_name, speaker), group in vocs_df.groupby(['video_name', 'speaker']):
-        # Sort by start time
-        group = group.sort_values('start_time_seconds').reset_index(drop=True)
-        
-        if len(group) == 0:
-            continue
-            
-        current_vocalization = group.iloc[0].copy()
-        
-        for i in range(1, len(group)):
-            next_voc = group.iloc[i]
-            
-            # Check if current and next vocalization overlap or are adjacent
-            if next_voc['start_time_seconds'] <= current_vocalization['end_time_seconds']:
-                # Merge: extend end time to the maximum of both
-                current_vocalization['end_time_seconds'] = max(
-                    current_vocalization['end_time_seconds'],
-                    next_voc['end_time_seconds']
-                )
-            else:
-                # No overlap, save current and start new one
-                merged_vocs.append(current_vocalization)
-                current_vocalization = next_voc.copy()
-        
-        # Add the last vocalization
-        merged_vocs.append(current_vocalization)
-    
-    return pd.DataFrame(merged_vocs).reset_index(drop=True)
+    if pd.isna(video_name):
+        return None
 
-def parse_rttm(file_path: Path = AudioClassification.VTC_RTTM_FILE, target_speech_types: list = None) -> pd.DataFrame:
+    s = str(video_name)
+    # 1. Match 'id123456' or 'ID123456'
+    match = re.search(r"id(\d{6})", s, re.IGNORECASE)
+    if match:
+        return match.group(1)
+
+    # 2. Match leading or isolated 6 digits
+    match_digits = re.search(r"(?:^|[_/-])(\d{6})(?:$|[_/-])", s)
+    if match_digits:
+        return match_digits.group(1)
+
+    return None
+
+
+def create_second_level_labels(
+    segments_df: pd.DataFrame,
+    video_duration_seconds: int,
+) -> np.ndarray:
     """
-    Parse a RTTM file and return a DataFrame with vocalization information.
+    Create a second-by-second label array for a video based on discrete segment intervals.
 
     Parameters
     ----------
-    file_path : Path, optional
-        Path to the RTTM file, by default AudioClassification.VTC_RTTM_FILE
-    target_speech_types : list, optional
-        List of speech types to include (e.g., ['KCDS', 'OHS']), by default None (include all)
-        
+    segments_df : pd.DataFrame
+        DataFrame containing segment onset/offset timestamps and state assignments.
+    video_duration_seconds : int
+        Total recording span in seconds.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (video_duration_seconds,) containing string labels or None.
+    """
+    labels = np.full(video_duration_seconds, None, dtype=object)
+
+    if segments_df.empty:
+        return labels
+
+    df_work = segments_df.copy()
+
+    # Ensure time columns exist in seconds
+    if "start_time_sec" not in df_work.columns or "end_time_sec" not in df_work.columns:
+        if "start_time_min" in df_work.columns and "end_time_min" in df_work.columns:
+            df_work["start_time_sec"] = df_work["start_time_min"].apply(time_to_seconds)
+            df_work["end_time_sec"] = df_work["end_time_min"].apply(time_to_seconds)
+        else:
+            return labels
+
+    state_col = "social_state" if "social_state" in df_work.columns else "interaction_type"
+
+    for _, segment in df_work.iterrows():
+        try:
+            start_sec = int(np.round(float(segment["start_time_sec"])))
+        except (ValueError, TypeError):
+            start_sec = 0
+
+        try:
+            end_sec = int(np.round(float(segment["end_time_sec"])))
+            end_sec = min(end_sec, video_duration_seconds - 1)
+        except (ValueError, TypeError):
+            end_sec = start_sec
+
+        interaction_type = str(segment[state_col]).lower().strip()
+        start_sec = max(0, start_sec)
+
+        if start_sec <= end_sec:
+            labels[start_sec : end_sec + 1] = interaction_type
+
+    return labels
+
+
+def parse_rttm(
+    file_path: Path = ModelAssets.VTC_RTTM_FILE,
+    target_speech_types: Optional[List[str]] = None,
+) -> pd.DataFrame:
+    """
+    Parse a NIST RTTM speech diarization file into a structured vocalization table.
+
+    Parameters
+    ----------
+    file_path : Path, default=ModelAssets.VTC_RTTM_FILE
+        Filesystem path to the VTC RTTM output file.
+    target_speech_types : Optional[List[str]], default=None
+        Speech classification tokens to filter for (e.g. ['KCHI', 'KCDS', 'OHS']).
+        If None, all speaker types are included.
+
     Returns
     -------
     pd.DataFrame
-        DataFrame with vocalization information
+        Table with ['video_name', 'start_time_seconds', 'end_time_seconds',
+        'duration_seconds', 'speech_type'].
     """
     data = []
-    if not file_path.exists(): return pd.DataFrame()
-    with open(file_path, 'r') as f:
-        # We expect lines in the format: SPEAKER <video_name> <channel> <start_time> <duration> <ortho> <stype> <speaker_type> <speaker_name>
+    if not file_path.exists():
+        return pd.DataFrame()
+
+    filter_types = set(target_speech_types) if target_speech_types else None
+
+    with open(file_path, "r", encoding="utf-8") as f:
         for line in f:
             parts = line.strip().split()
-            if len(parts) >= 8:
+            if len(parts) >= 8 and parts[0] == "SPEAKER":
                 speech_type = parts[7]
-                # We are only interested in KCDS and OHS vocalizations for this analysis
-                if target_speech_types is not None and speech_type not in target_speech_types:
+                if filter_types and speech_type not in filter_types:
                     continue
+
+                raw_video_name = parts[1]
+                clean_stem = Path(raw_video_name).stem
+
+                try:
+                    start_sec = float(parts[3])
+                    dur_sec = float(parts[4])
+                except (ValueError, IndexError):
+                    continue
+
+                if dur_sec <= 0.0:
+                    continue
+
                 data.append({
-                    'video_name': parts[1],
-                    'start_time_seconds': float(parts[3]),
-                    'end_time_seconds': float(parts[3]) + float(parts[4]),
-                    'duration_seconds': float(parts[4]),
-                    'speech_type': speech_type
+                    "video_name": clean_stem,
+                    "start_time_seconds": start_sec,
+                    "end_time_seconds": start_sec + dur_sec,
+                    "duration_seconds": dur_sec,
+                    "speech_type": speech_type,
                 })
+
     return pd.DataFrame(data)
 
-def merge_overlapping_intervals(intervals: List[Tuple[float, float]]):
+
+def merge_overlapping_intervals(
+    intervals: List[Tuple[float, float]],
+) -> Tuple[List[Tuple[float, float]], float]:
     """
-    Merges overlapping or adjacent intervals and calculates total duration.
+    Merge overlapping or adjacent continuous temporal intervals and calculate total duration.
 
     Parameters
     ----------
-    intervals : list of tuples
-        List of (start_time, end_time) tuples representing intervals.
+    intervals : List[Tuple[float, float]]
+        List of (start_sec, end_sec) tuples.
 
     Returns
     -------
-    merged : list of tuples
-        List of merged (start_time, end_time) intervals.
-    total_duration : float
-        Total duration covered by the merged intervals.
+    Tuple[List[Tuple[float, float]], float]
+        (merged_intervals, total_duration_seconds)
     """
-    if not intervals: return [], 0.0
-    intervals = sorted(intervals)
-    merged = [intervals[0]]
-    # Iterate through sorted intervals and merge as needed
-    for current_start, current_end in intervals[1:]:
+    if not intervals:
+        return [], 0.0
+
+    sorted_intervals = sorted(intervals, key=lambda x: x[0])
+    merged = [sorted_intervals[0]]
+
+    for current_start, current_end in sorted_intervals[1:]:
         last_start, last_end = merged[-1]
         if current_start <= last_end:
             merged[-1] = (last_start, max(last_end, current_end))
         else:
             merged.append((current_start, current_end))
+
     total_duration = sum(end - start for start, end in merged)
     return merged, total_duration
 
-def get_child_fold_boundaries(segments_df, num_folds=5):
+
+def merge_overlapping_vocalizations(vocs_df: pd.DataFrame) -> pd.DataFrame:
     """
-    Returns a dictionary mapping child_id to a list of (start, end) 
-    timestamps for each of the 5 folds.
+    Merge overlapping vocalizations from the same speaker category within a video.
+
+    Parameters
+    ----------
+    vocs_df : pd.DataFrame
+        DataFrame containing ['video_name', 'speech_type', 'start_time_seconds', 'end_time_seconds'].
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with fused vocalization episodes.
     """
-    # Calculate global duration per child
-    child_durations = segments_df.groupby('child_id')['duration_sec'].sum().to_dict()
-    
-    boundaries = {}
-    for child_id, total_dur in child_durations.items():
+    if vocs_df.empty:
+        return vocs_df
+
+    merged_rows = []
+    group_cols = ["video_name", "speech_type"]
+
+    for (video_name, speech_type), group in vocs_df.groupby(group_cols):
+        sorted_group = group.sort_values("start_time_seconds").to_dict("records")
+        current_voc = sorted_group[0].copy()
+
+        for next_voc in sorted_group[1:]:
+            if next_voc["start_time_seconds"] <= current_voc["end_time_seconds"]:
+                current_voc["end_time_seconds"] = max(
+                    current_voc["end_time_seconds"],
+                    next_voc["end_time_seconds"],
+                )
+                current_voc["duration_seconds"] = (
+                    current_voc["end_time_seconds"] - current_voc["start_time_seconds"]
+                )
+            else:
+                merged_rows.append(current_voc)
+                current_voc = next_voc.copy()
+
+        merged_rows.append(current_voc)
+
+    return pd.DataFrame(merged_rows).reset_index(drop=True)
+
+
+def get_child_fold_boundaries(
+    segments_df: pd.DataFrame,
+    num_folds: int = 5,
+) -> Dict[Any, List[Tuple[float, float]]]:
+    """
+    Calculate equal-duration continuous timeline boundaries for each child across cross-validation folds.
+
+    Parameters
+    ----------
+    segments_df : pd.DataFrame
+        DataFrame containing ['child_id', 'global_start', 'global_end'] or ['child_id', 'duration_sec'].
+    num_folds : int, default=5
+        Number of equal folds to construct per participant.
+
+    Returns
+    -------
+    Dict[Any, List[Tuple[float, float]]]
+        Dictionary mapping child_id to a list of (start_sec, end_sec) fold boundary intervals.
+    """
+    boundaries: Dict[Any, List[Tuple[float, float]]] = {}
+
+    for child_id, group in segments_df.groupby("child_id"):
+        if "global_start" in group.columns and "global_end" in group.columns:
+            total_dur = group["global_end"].max() - group["global_start"].min()
+            start_offset = group["global_start"].min()
+        else:
+            total_dur = group["duration_sec"].sum()
+            start_offset = 0.0
+
         fold_size = total_dur / num_folds
-        # Generate boundaries: [0, size, 2*size, 3*size, 4*size, total]
-        points = [i * fold_size for i in range(num_folds + 1)]
-        # Create pairs: (0, 20), (20, 40), etc.
-        boundaries[child_id] = [(points[i], points[i+1]) for i in range(num_folds)]
-        
+        points = [start_offset + (i * fold_size) for i in range(num_folds + 1)]
+        boundaries[child_id] = [(points[i], points[i + 1]) for i in range(num_folds)]
+
     return boundaries

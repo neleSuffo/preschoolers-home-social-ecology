@@ -1,216 +1,245 @@
+"""
+src/pipeline/pipeline_orchestrator.py
+
+Group-K-Fold cross-validation controller for the social ecology analysis pipeline.
+Groups video sessions by Child ID to ensure participant independence across splits,
+supporting both standard multi-fold validation and nested hyperparameter optimization.
+"""
+
 import argparse
-import shutil
-import sys
+from datetime import datetime
+import logging
+from pathlib import Path
+from typing import Any, Dict, List, Tuple, Optional
+
 import pandas as pd
 from sklearn.model_selection import GroupKFold
-from datetime import datetime
-from tune_hyperparameters import generate_hyperparameter_combinations, run_analysis_with_config, evaluate_combination
-<<<<<<< Updated upstream
-from constants import Analysis
-from config import AnalysisConfig
-=======
-from src.constants import Analysis
-from src.config import AnalysisConfig
->>>>>>> Stashed changes
-from reserach_questions.utils import extract_child_id
 
-def get_folds():
+from src.config import AnalysisConfig
+from src.constants import AnalysisPaths, BasePaths
+from src.evaluation.tune_hyperparameters import (
+    evaluate_combination,
+    generate_hyperparameter_combinations,
+    run_analysis_with_config,
+)
+from src.research_questions.utils import extract_child_id
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+NUM_FOLDS = 5
+
+
+def get_folds(
+    video_list_path: Path = AnalysisPaths.VIDEOS_LIST_TUNING,
+    n_splits: int = NUM_FOLDS,
+) -> Tuple[List[Tuple[Any, Any]], pd.DataFrame]:
     """
-    Splits all available annotated videos into 5 groups by Child ID.
-    
-    Returns:
-    --------
-    folds: list of tuples
-        List of (train_indices, test_indices) for each fold
-    df: pandas DataFrame
-        DataFrame containing video names and corresponding Child IDs
+    Split annotated benchmark video sessions into group-k-folds partitioned by Child ID.
+
+    Parameters
+    ----------
+    video_list_path : Path
+        Path to text file containing video stems.
+    n_splits : int, default=5
+        Number of cross-validation folds.
+
+    Returns
+    -------
+    Tuple[List[Tuple[Any, Any]], pd.DataFrame]
+        List of (train_indices, test_indices) tuples and the participant mapping DataFrame.
     """
-    # Load video list and extract Child IDs
-    with open(Analysis.QUANTEX_VIDEOS_LIST_FILE, "r") as f:
+    if not video_list_path.exists():
+        raise FileNotFoundError(f"Video list file not found: {video_list_path}")
+
+    with open(video_list_path, "r", encoding="utf-8") as f:
         videos = [line.strip() for line in f if line.strip()]
 
     df = pd.DataFrame({"video_name": videos})
     df["child_id"] = df["video_name"].apply(lambda x: extract_child_id(x) or "unknown")
-    
-    # Split into folds using GroupKFold to ensure all videos of the same child are in the same fold
-    gkf = GroupKFold(n_splits=AnalysisConfig.NUM_FOLDS)
-    return list(gkf.split(df, groups=df['child_id'])), df
 
-def run_cross_validation(mode="validation", social_state_mode="tertiary", max_combos=20):  
+    gkf = GroupKFold(n_splits=n_splits)
+    folds = list(gkf.split(df, groups=df["child_id"]))
+    return folds, df
+
+
+def flatten_metrics(detailed_metrics: Dict[str, Any]) -> Dict[str, float]:
+    """Flatten hierarchical evaluation dictionary into a single-level tabular row."""
+    flat: Dict[str, float] = {}
+    for category, scores in detailed_metrics.items():
+        cat_clean = category.lower().replace(" ", "_")
+
+        if not isinstance(scores, dict):
+            flat[cat_clean] = float(scores)
+            continue
+
+        for metric, value in scores.items():
+            metric_clean = metric.replace("_score", "")
+            flat[f"{cat_clean}_{metric_clean}"] = float(value)
+
+    return flat
+
+
+def run_cross_validation(
+    mode: str = "validation",
+    social_state_mode: str = "tertiary",
+    max_combos: int = 20,
+    video_list_path: Path = AnalysisPaths.VIDEOS_LIST_TUNING,
+    output_dir: Optional[Path] = None,
+) -> None:
     """
-    Runs NUM_FOLDS-fold cross-validation for the analysis pipeline.
-    
-    Parameters:
-    -----------
-    mode: str
-        "validation" for standard CV, "tuning" for hyperparameter tuning (evaluates on a smaller subset of combinations)
-    social_state_mode: str
-        "tertiary" or "binary" evaluation mode (affects evaluation metrics and thresholds)
-    max_combos: int
-        Maximum number of hyperparameter combinations to evaluate during tuning (only applicable in "tuning")
+    Execute participant-independent cross-validation.
+
+    Parameters
+    ----------
+    mode : str, default='validation'
+        'validation' to test fixed baseline parameters, or 'tuning' for nested random search.
+    social_state_mode : str, default='tertiary'
+        Granularity: 'tertiary' or 'binary'.
+    max_combos : int, default=20
+        Number of parameter combinations per fold (tuning mode only).
+    video_list_path : Path
+        Source list of videos.
+    output_dir : Optional[Path], default=None
+        Destination root directory.
     """
-    # get correct mode applied to config (tertiary vs binary) for the rest of the pipeline and evaluation
     AnalysisConfig.apply_mode(social_state_mode)
-    
-    folds, df = get_folds()
+
+    folds, df = get_folds(video_list_path=video_list_path, n_splits=NUM_FOLDS)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_root = Analysis.BASE_OUTPUT_DIR / f"cv_{mode}_{timestamp}"
+    output_root = output_dir or (BasePaths.OUTPUT_DIR / f"cv_{mode}_{timestamp}")
     output_root.mkdir(parents=True, exist_ok=True)
 
-    fold_results = []
+    fold_results: List[Dict[str, float]] = []
 
-    def flatten_metrics(detailed_metrics):
-        flat = {}
-        for category, scores in detailed_metrics.items():
-            cat_clean = category.lower().replace(" ", "_")
+    for i, (train_idx, test_idx) in enumerate(folds, 1):
+        train_videos = df.iloc[train_idx]["video_name"].tolist()
+        test_videos = df.iloc[test_idx]["video_name"].tolist()
 
-            # If scores is a float/scalar (e.g. overall_kappa = 0.48)
-            if not isinstance(scores, dict):
-                flat[cat_clean] = scores
-                continue
-
-            # If scores is a dict (e.g. 'interacting': {'precision': ..., 'recall': ...})
-            for metric, value in scores.items():
-                metric_clean = metric.replace("_score", "")
-                flat[f"{cat_clean}_{metric_clean}"] = value
-        return flat
-
-    # --- CROSS-VALIDATION LOOP ---
-    for i, (train_idx, test_idx) in enumerate(folds):
-        fold_id = i + 1
-        train_videos = df.iloc[train_idx]['video_name'].tolist()
-        test_videos = df.iloc[test_idx]['video_name'].tolist()
-        
-        print(f"\n🚀 FOLD {fold_id}/{AnalysisConfig.NUM_FOLDS}")
+        logger.info("=" * 40)
+        logger.info("Executing Fold %d/%d (%d train, %d test videos)", i, NUM_FOLDS, len(train_videos), len(test_videos))
+        logger.info("=" * 40)
 
         if mode == "tuning":
-            # --- NESTED TUNING: Find best params using ONLY Train Videos ---
-            print(f"🔎 Phase 1: Tuning on {len(train_videos)} training videos...")
-            
-            # Generate combinations (Random Search)
+            logger.info("Phase 1: Tuning on %d training videos...", len(train_videos))
             combos = generate_hyperparameter_combinations(max_combinations=max_combos, random_sample=True)
-            
-            best_f1 = -1
-            best_params = None
-            
-            tuning_dir = output_root / f"fold_{fold_id}_tuning_search"
 
-            for c_idx, combo in enumerate(combos):
-                # Run the pipeline on TRAINING videos only
+            best_f1 = -1.0
+            best_params: Optional[Dict[str, Any]] = None
+            tuning_dir = output_root / f"fold_{i}_tuning_search"
+
+            for c_idx, combo in enumerate(combos, 1):
                 success, _, seg_path, error = run_analysis_with_config(
-                    combo, c_idx, tuning_dir, 
+                    hyperparameters=combo,
+                    combo_id=c_idx,
+                    output_base_dir=tuning_dir,
                     social_state_mode=social_state_mode,
                     hyperparameter_tuning=True,
-                    video_list=train_videos
+                    video_list=train_videos,
                 )
-                
-                if success:
-                    # Score the combo on TRAINING videos
-                    res = evaluate_combination(seg_path, video_list=train_videos, social_state_mode=social_state_mode)
-                    current_f1 = res['detailed_metrics']['macro_avg'].get('f1_score', 0)
-                    
-                    if current_f1 > best_f1:
-                        best_f1 = current_f1
-                        best_params = combo
-                else:
-                    print(f"❌ Combo {c_idx} failed! Error:\n{error}")
-                    sys.exit(1)
-            
-            print(f"✅ Best Train F1: {best_f1:.4f}. Now validating on unseen test videos...")
 
-            # --- PHASE 2: Evaluate 'Winner' on TEST Videos ---
+                if success and seg_path:
+                    res = evaluate_combination(seg_path, social_state_mode=social_state_mode, video_list=train_videos)
+                    if res.get("success") and res.get("detailed_metrics"):
+                        current_f1 = res["detailed_metrics"]["macro_avg"].get("f1_score", 0.0)
+                        if current_f1 > best_f1:
+                            best_f1 = current_f1
+                            best_params = combo
+
+            if best_params is None:
+                logger.error("Fold %d: Tuning failed across all candidates.", i)
+                continue
+
+            logger.info("Fold %d: Winner Macro F1 = %.4f. Validating on test set...", i, best_f1)
+
             success, _, seg_path, error = run_analysis_with_config(
-                best_params, fold_id, output_root / f"fold_{fold_id}_final_test", 
+                hyperparameters=best_params,
+                combo_id=i,
+                output_base_dir=output_root / f"fold_{i}_final_test",
                 social_state_mode=social_state_mode,
                 hyperparameter_tuning=True,
-                video_list=test_videos
+                video_list=test_videos,
             )
-            
-            if success:
-                final_res = evaluate_combination(seg_path, video_list=test_videos, social_state_mode=social_state_mode)
-                fold_results.append(flatten_metrics(final_res['detailed_metrics']))
+
+            if success and seg_path:
+                final_res = evaluate_combination(seg_path, social_state_mode=social_state_mode, video_list=test_videos)
+                if final_res.get("success") and final_res.get("detailed_metrics"):
+                    fold_results.append(flatten_metrics(final_res["detailed_metrics"]))
+
         else:
-            print(f"📊 Validating on: {len(test_videos)} videos")
-
-            if social_state_mode == "binary":
-                print("⚠️ Running in BINARY mode: Social states will be evaluated as 'Interacting' vs 'Not Interacting' (Available + Alone combined).")
-                AnalysisConfig.apply_mode("binary")
-            else:
-                AnalysisConfig.apply_mode("tertiary")
-
-            # now read all active parameters
+            # Standard validation mode under active parameters
             current_params = {
                 item: getattr(AnalysisConfig, item)
                 for item in dir(AnalysisConfig)
-                if not item.startswith("__")
-                and not callable(getattr(AnalysisConfig, item))
+                if not item.startswith("__") and not callable(getattr(AnalysisConfig, item))
             }
-            
+
             success, _, seg_path, error = run_analysis_with_config(
-                current_params, 
-                fold_id, 
-                output_root, 
+                hyperparameters=current_params,
+                combo_id=i,
+                output_base_dir=output_root / f"fold_{i}",
                 social_state_mode=social_state_mode,
                 hyperparameter_tuning=False,
-                video_list=test_videos
+                video_list=test_videos,
             )
-            
-            if success:
-                # 2. Evaluate
-                eval_res = evaluate_combination(seg_path, video_list=test_videos, social_state_mode=social_state_mode)
-                if eval_res['success']:
-                    # Flatten detailed metrics into the fold results
-                    flat_row = flatten_metrics(eval_res['detailed_metrics'])
-                    fold_results.append(flat_row)
+
+            if success and seg_path:
+                eval_res = evaluate_combination(seg_path, social_state_mode=social_state_mode, video_list=test_videos)
+                if eval_res.get("success") and eval_res.get("detailed_metrics"):
+                    fold_results.append(flatten_metrics(eval_res["detailed_metrics"]))
                 else:
-                    print(f"⚠️ Eval failed for fold {fold_id}: {eval_res['error']}")
+                    logger.warning("Fold %d evaluation failed: %s", i, eval_res.get("error"))
             else:
-                print(f"❌ Pipeline failed for fold {fold_id}: {error}")
-            
-    # --- AGGREGATE RESULTS ---
+                logger.error("Fold %d pipeline failed: %s", i, error)
+
     if not fold_results:
-        print("❌ No results collected. Check if database query returned 0 rows.")
+        logger.error("No validation results gathered across folds.")
         return
 
     results_df = pd.DataFrame(fold_results)
-    print("\n" + "="*40 + "\n🏁 SUMMARY\n" + "="*40)
-    
-    # print cv summary and store results
     stats = results_df.describe()
 
     if not stats.empty and "mean" in stats.index:
         summary_rows = stats.loc[["mean", "std", "min", "max"]]
-        print(summary_rows)
-
-        # Append summary rows to fold results
         output_df = pd.concat([results_df, summary_rows])
     else:
-        print(results_df)
         output_df = results_df
 
-    # also add what videos were in each fold for reference
+    # Record fold composition for provenance
     fold_video_info = []
-    for i, (train_idx, test_idx) in enumerate(folds):
-        fold_id = i + 1
-        test_videos = df.iloc[test_idx]['video_name'].tolist()
+    for i, (_, test_idx) in enumerate(folds, 1):
+        test_videos = df.iloc[test_idx]["video_name"].tolist()
         fold_video_info.append({
-            "fold_id": fold_id,
+            "fold_id": i,
             "num_test_videos": len(test_videos),
-            "test_videos": ", ".join(test_videos)
+            "test_videos": ", ".join(test_videos),
         })
-    fold_video_df = pd.DataFrame(fold_video_info)
-    fold_video_df.to_csv(output_root / "fold_video_info.csv", index=False)
+
+    pd.DataFrame(fold_video_info).to_csv(output_root / "fold_video_info.csv", index=False)
     output_df.to_csv(output_root / "cv_summary.csv", index=True)
-    
-    # save copy of pipeline_frame_level_analysis.py and pipeline_video_level_analysis.py for reference
-    shutil.copy(Analysis.FRAME_ANALYSIS_SCRIPT, output_root / Analysis.FRAME_ANALYSIS_SCRIPT.name)
-    shutil.copy(Analysis.SEGMENT_CREATION_SCRIPT, output_root / Analysis.SEGMENT_CREATION_SCRIPT.name)
+
+    logger.info("Cross-Validation Complete. Summary saved to: %s", output_root / "cv_summary.csv")
+
+
+def main() -> None:
+    """CLI entrypoint for running cross-validation."""
+    parser = argparse.ArgumentParser(description="Cross-Validation Orchestration Controller")
+    parser.add_argument("--mode", choices=["validation", "tuning"], default="validation", help="Evaluation mode")
+    parser.add_argument("--social_state_mode", choices=["binary", "tertiary"], default="tertiary", help="Classification granularity")
+    parser.add_argument("--max_combos", type=int, default=20, help="Tuning candidate budget per fold")
+    parser.add_argument("--video_list", type=Path, default=AnalysisPaths.VIDEOS_LIST_TUNING, help="Video list file")
+    args = parser.parse_args()
+
+    run_cross_validation(
+        mode=args.mode,
+        social_state_mode=args.social_state_mode,
+        max_combos=args.max_combos,
+        video_list_path=args.video_list,
+    )
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--max_combos', type=int, default=20, help='Maximum number of hyperparameter combinations to evaluate during tuning (only applicable in "tuning" mode)')
-    parser.add_argument('--social_state_mode', type=str, default='tertiary', help='Evaluation mode for social state analysis')
-    parser.add_argument('--mode', type=str, default='validation', choices=['validation', 'tuning'], help='Whether to run standard cross-validation or hyperparameter tuning')
-    args = parser.parse_args()
-    
-    run_cross_validation(mode=args.mode, social_state_mode=args.social_state_mode, max_combos=args.max_combos)
+    main()
