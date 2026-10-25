@@ -676,6 +676,7 @@ dmypy.json
 *.safetensors
 *.pt
 *.pth
+*.tex
 *.db
 *.ckpt
 #models/
@@ -684,7 +685,7 @@ checkpoints/
 *.avi
 *.mov
 *.mkv
-
+outputs/
 # IDE
 .vscode/
 .idea/
