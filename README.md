@@ -1,5 +1,8 @@
 # The social ecology of development: The changing structure of preschoolers' everyday experiences at home
 
+[![DOI (Code)](https://zenodo.org/badge/1030951680.svg)](https://doi.org/10.5281/zenodo.23651513)
+[![DOI (Detection Database)](https://zenodo.org/badge/DOI/10.5281/zenodo.23604952.svg)](https://doi.org/10.5281/zenodo.23604952)
+
 This repository contains the automated multimodal processing pipeline and the Bayesian statistical analysis for the paper:  
 **"The social ecology of development: The changing structure of preschoolers' everyday experiences at home"**.
 
@@ -47,10 +50,10 @@ We present a fully automated pipeline designed to bridge the "measurement gap" i
 │   ├── constants.py                  # Directory paths, model asset metadata, and anchors
 │   │ 
 │   ├── feature_extraction/           # Raw cue extraction & database ingestion
-│   │   ├── download_assets.py        # Hugging Face weight & Zenodo database downloader
-│   │   ├── run_pipeline.py           # Master CLI orchestrator for feature extraction
+│   │   ├── download_model_weights.py # Hugging Face weight downloader
+│   │   ├── main.py                   # Master CLI orchestrator for feature extraction
 │   │   ├── run_video_detection.py    # Unified YOLO batch engine (face, person, book)
-│   │   ├── run_audio_rttm_ingestion.py # VTC audio diarization loader
+│   │   ├── run_audio_ingestion.py # VTC audio diarization loader
 │   │   ├── setup_inference_db.py     # SQLite schema and index builder
 │   │   └── utils.py                  # Frame indexing and progress-log utilities
 │   │
@@ -65,7 +68,6 @@ We present a fully automated pipeline designed to bridge the "measurement gap" i
 │   │   └── pipeline_orchestrator.py  # Multi-process parallel batch controller
 │   │
 │   ├── evaluation/                   # Model validation & cross-validation tuning
-│   │   ├── eval_irr.py               # Human inter-rater reliability (Cohen's Kappa)
 │   │   ├── eval_segment_performance.py # Frame- and segment-level metric evaluations
 │   │   └── tune_hyperparameters.py   # Group 5-fold cross-validation grid search
 │   │
@@ -73,10 +75,11 @@ We present a fully automated pipeline designed to bridge the "measurement gap" i
 │   │   ├── rq_02_kcs.py              # Child vocalization (KCS) extractor
 │   │   ├── rq_03_kcds.py             # Child-directed & overheard speech extractor
 │   │   ├── rq_04_turn_taking.py      # Conversational turns, latencies & agency
-│   │   └── rq_05_interaction_composition.py # Diagnostic cue specificity analyzer
+│   │   ├── rq_05_cue_specificity.py  # Diagnostic cue specificity analyzer
+│   │   └── utils.py                  # Helper functions
+
 │   │
 │   └── visualization/                # Qualitative plotting & video HUD rendering
-│       ├── create_annotated_video.py # Diagnostic video generator with detection HUD
 │       ├── plot_face_heatmaps.py     # Spatial face distribution plots
 │       ├── plot_multimodal_social_state_frames.py # Exemplar consecutive sequences
 │       └── plot_segments_timeline.py # GT vs. predicted timeline bar plots
@@ -99,8 +102,8 @@ This project uses **Poetry** for dependency management. This ensures that all re
 
 2. **Clone and Install dependencies:**
    ```bash
-   git clone https://github.com/neleSuffo/preschool-social-ecology.git
-   cd preschool-social-ecology
+   git clone https://github.com/neleSuffo/preschoolers-social-ecology.git
+   cd preschoolers-social-ecology
    poetry install
    ```
 
@@ -165,22 +168,27 @@ python pipeline/pipeline_orchestrator.py --mode validation
 #### Full Dataset Processing
 To generate the final CSV files for the statistical analysis:
 ```bash
-python python pipeline/pipeline_runner.py --video_list video_list.txt
+poetry run python -m src.pipeline.pipeline_runner
 ```
 
 ---
 ## Citation
-If you use this pipeline or data in your research, please cite the associated preprint:
-> Suffo, N.-P., Suffo, A., Martin, P.-E., Kim, Y., Zahra, A., Haun, D., & Bohn, M. (2026). *The Social Ecology of Development: The Changing Structure of Preschoolers’ Everyday Experiences*. https://doi.org/10.31234/osf.io/bmz3e_v1
+## Citation
+If you use this pipeline or data in your research, please cite the associated preprint and archives:
 
+> Suffo, N.-P., Suffo, A., Martin, P.-E., Kim, Y., Zahra, A., Haun, D., & Bohn, M. (2026). *The Social Ecology of Development: The Changing Structure of Preschoolers’ Everyday Experiences*. https://doi.org/10.31234/osf.io/bmz3e_v2
+
+* **Code Pipeline (Zenodo):** [![DOI](https://zenodo.org/badge/1030951680.svg)](https://doi.org/10.5281/zenodo.23651513)
+* **Inference Dataset (Zenodo):** [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23604952.svg)](https://doi.org/10.5281/zenodo.23604952)
+* 
 ```bibtex
 @online{suffoSocialEcologyDevelopment2026,
   title = {The Social Ecology of Development: {{The}} Changing Structure of Preschoolers’ Everyday Experiences},
   shorttitle = {The Social Ecology of Development},
   author = {Suffo, Nele-Pauline and Suffo, Anas and Martin, Pierre-Etienne and Kim, Yujin and Zahra, Anam and Haun, Daniel and Bohn, Manuel},
   date = {2026-06-30},
-  doi = {10.31234/osf.io/bmz3e_v1},
-  url = {https://osf.io/bmz3e_v1},
+  doi = {10.31234/osf.io/bmz3e_v2},
+  url = {https://doi.org/10.31234/osf.io/bmz3e_v2},
   urldate = {2026-07-04},
   pubstate = {prepublished}
 }
