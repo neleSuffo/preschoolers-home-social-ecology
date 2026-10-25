@@ -1,7 +1,0 @@
-[default]
-# no output video showing the detection results is generated
-generate_detection_output_video = false
-
-[video_output]
-# output video file name
-generate_detection_output_video = true

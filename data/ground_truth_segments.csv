@@ -1,4 +1,4 @@
-video_id,video_name,interaction_type,segment_start,segment_end,start_time_sec,end_time_sec,duration_sec,age_at_recording,child_id
+video_id,video_name,social_state,segment_start,segment_end,start_time_sec,end_time_sec,duration_sec,age_at_recording,child_id
 1,quantex_at_home_id254922_2022_04_12_01,Interacting,0,2610,0.0,87.0,87.0,5.872689938,254922
 1,quantex_at_home_id254922_2022_04_12_01,Available,2640,3720,88.0,124.0,36.0,5.872689938,254922
 1,quantex_at_home_id254922_2022_04_12_01,Interacting,3750,3930,125.0,131.0,6.0,5.872689938,254922
