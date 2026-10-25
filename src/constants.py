@@ -85,7 +85,7 @@ class AnalysisPaths:
     FRAMES_DIR = BasePaths.DATA_DIR / "videos_processed"
     
     # Pipeline output directory
-    OUTPUT_FOLDER = BasePaths.OUTPUT_DIR / "pipeline_outputs"
+    OUTPUT_FOLDER = BasePaths.OUTPUT_DIR / "analysis_20261025_215845"
     HEATMAP_DIR = OUTPUT_FOLDER / "heatmaps"
     SEGMENT_TIMELINE_DIR = OUTPUT_FOLDER / "segment_timeline_plots"
 

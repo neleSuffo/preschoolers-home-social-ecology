@@ -67,17 +67,6 @@ def filter_initial_setup_frames(
     )
 
     is_excluded_startup = is_starter_video & (df_clean[frame_col] < exclusion_frames)
-    dropped_count = int(is_excluded_startup.sum())
-    starter_vids_count = df_clean.loc[is_starter_video, video_col].nunique()
-
-    logger.info(
-        "Startup Filter: Evaluated %d starter ('_01') recordings. "
-        "Excluded %d setup detections (frames 0-%d).",
-        starter_vids_count,
-        dropped_count,
-        exclusion_frames - 1,
-    )
-
     return df_clean[~is_excluded_startup].copy()
 
 
@@ -113,7 +102,6 @@ def load_or_create_matched_full_data(
         logger.info("Loading cached matched detections from: %s", cache_path)
         return pd.read_csv(cache_path)
 
-    logger.info("Reading interaction segments from: %s", segments_csv_path)
     df_segments = pd.read_csv(segments_csv_path)
 
     df_segments["video_name_clean"] = (
@@ -195,7 +183,6 @@ def load_or_create_matched_full_data(
     df_faces["x_center"] = (df_faces["x_min"] + df_faces["x_max"]) / 2.0
     df_faces["y_center"] = (df_faces["y_min"] + df_faces["y_max"]) / 2.0
 
-    logger.info("Executing in-memory SQL interval join with interaction segments...")
     with sqlite3.connect(":memory:") as mem_conn:
         df_faces.to_sql("faces", mem_conn, index=False)
         df_segments.to_sql("segments", mem_conn, index=False)
@@ -225,7 +212,6 @@ def load_or_create_matched_full_data(
         """
         df_matched = pd.read_sql_query(join_query, mem_conn)
 
-    logger.info("Total matched detections: %d", len(df_matched))
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     df_matched.to_csv(cache_path, index=False)
     logger.info("Cached matched detections to: %s", cache_path)
@@ -510,7 +496,6 @@ def compute_segment_and_detection_statistics(
     pd.DataFrame
         Summary statistics table per social state.
     """
-    logger.info("Computing summary statistics from segments: %s", segments_csv_path)
     df_seg = pd.read_csv(segments_csv_path)
 
     df_seg["video_name_clean"] = (

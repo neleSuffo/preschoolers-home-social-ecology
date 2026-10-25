@@ -58,7 +58,7 @@ def reclassify_to_binary(df: pd.DataFrame) -> pd.DataFrame:
     Parameters
     ----------
     df : pd.DataFrame
-        Input segments dataframe containing 'interaction_type' or 'social_state'.
+        Input segments dataframe containing 'social_state'.
 
     Returns
     -------
@@ -66,8 +66,7 @@ def reclassify_to_binary(df: pd.DataFrame) -> pd.DataFrame:
         Dataframe with mapped binary labels.
     """
     df_copy = df.copy()
-    col = "social_state" if "social_state" in df_copy.columns else "interaction_type"
-    df_copy[col] = df_copy[col].astype(str).str.lower().str.strip()
+    df_copy["social_state"] = df_copy["social_state"].astype(str).str.lower().str.strip()
 
     mapping = {
         "interacting": "interacting",
@@ -76,8 +75,7 @@ def reclassify_to_binary(df: pd.DataFrame) -> pd.DataFrame:
         "not interacting": "not interacting",
     }
 
-    df_copy[col] = df_copy[col].map(mapping).fillna("not interacting")
-    df_copy["interaction_type"] = df_copy[col]
+    df_copy["social_state"] = df_copy["social_state"].map(mapping).fillna("not interacting")
     return df_copy
 
 
@@ -115,7 +113,7 @@ def save_second_wise_labels(df: pd.DataFrame, output_folder: Path, filename: str
             all_second_wise_data.append({
                 "video_name": video_name,
                 "second": sec,
-                "interaction_type": str(label).lower() if label is not None else UNCLASSIFIED_LABEL,
+                "social_state": str(label).lower() if label is not None else UNCLASSIFIED_LABEL,
             })
 
     if all_second_wise_data:
@@ -166,8 +164,7 @@ def plot_segment_timeline(
         return
 
     for df_sub in [pred, gt]:
-        state_col = "social_state" if "social_state" in df_sub.columns else "interaction_type"
-        df_sub["interaction_type"] = df_sub[state_col].astype(str).str.lower().str.strip()
+        df_sub["social_state"] = df_sub["social_state"].astype(str).str.lower().str.strip()
         df_sub["duration_sec"] = df_sub["end_time_sec"] - df_sub["start_time_sec"]
         df_sub.dropna(subset=["start_time_sec", "end_time_sec"], inplace=True)
 
@@ -182,7 +179,7 @@ def plot_segment_timeline(
     y_pos_pred = 0.8
 
     for _, row in gt.iterrows():
-        c = colors.get(row["interaction_type"], "#808080")
+        c = colors.get(row["social_state"], "#808080")
         ax.barh(
             y=y_pos_gt,
             width=row["duration_sec"],
@@ -195,7 +192,7 @@ def plot_segment_timeline(
         )
 
     for _, row in pred.iterrows():
-        c = colors.get(row["interaction_type"], "#808080")
+        c = colors.get(row["social_state"], "#808080")
         ax.barh(
             y=y_pos_pred,
             width=row["duration_sec"],
@@ -279,11 +276,11 @@ def evaluate_performance_by_seconds(
         videos_to_eval = common_videos
         logger.info("Evaluating all %d available recording(s).", len(videos_to_eval))
 
-    gt_interaction_types = sorted(list({str(t).lower() for t in gt_work["interaction_type"].unique()}))
+    gt_social_states = sorted(list({str(t).lower() for t in gt_work["social_state"].unique()}))
     total_seconds_all = 0
     correct_seconds_all = 0
 
-    category_stats = {cat: {"total": 0, "correct": 0} for cat in gt_interaction_types}
+    category_stats = {cat: {"total": 0, "correct": 0} for cat in gt_social_states}
     confusion_matrix: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
     misclassifications: Dict[str, int] = defaultdict(int)
     video_results = []
@@ -299,8 +296,7 @@ def evaluate_performance_by_seconds(
             continue
 
         for df_sub in [pred_video, gt_video]:
-            state_col = "social_state" if "social_state" in df_sub.columns else "interaction_type"
-            df_sub["interaction_type"] = df_sub[state_col].astype(str).str.lower().str.strip()
+            df_sub["social_state"] = df_sub["social_state"].astype(str).str.lower().str.strip()
             df_sub["start_time_sec"] = pd.to_numeric(df_sub["start_time_sec"], errors="coerce")
             df_sub["end_time_sec"] = pd.to_numeric(df_sub["end_time_sec"], errors="coerce")
             df_sub.dropna(subset=["start_time_sec", "end_time_sec"], inplace=True)
@@ -388,7 +384,7 @@ def evaluate_performance_by_seconds(
         "category_accuracies": category_accuracies,
         "video_results": video_results,
         "confusion_matrix": confusion_matrix,
-        "interaction_types": list(category_stats.keys()),
+        "social_state_types": list(category_stats.keys()),
         "misclassifications": misclassifications,
     }
 
@@ -396,10 +392,10 @@ def evaluate_performance_by_seconds(
 def calculate_detailed_metrics(results: Dict[str, Any]) -> Dict[str, Any]:
     """Calculate precision, recall, support, and F1-score for each class and macro averages."""
     confusion_matrix = results["confusion_matrix"]
-    interaction_types = results["interaction_types"]
+    social_state_types = results["social_state_types"]
     detailed_metrics: Dict[str, Any] = {}
 
-    for class_name in interaction_types:
+    for class_name in social_state_types:
         tp = confusion_matrix[class_name].get(class_name, 0) if class_name in confusion_matrix else 0
 
         fp = sum(
@@ -444,14 +440,14 @@ def calculate_detailed_metrics(results: Dict[str, Any]) -> Dict[str, Any]:
 def generate_confusion_matrix_plot(results: Dict[str, Any], output_folder: Path) -> Path:
     """Render publication-quality normalized confusion matrix heatmap."""
     confusion_matrix = results["confusion_matrix"]
-    interaction_types = results["interaction_types"]
+    social_state_types = results["social_state_types"]
 
-    if len(interaction_types) <= 2:
+    if len(social_state_types) <= 2:
         labels = ["not interacting", "interacting"]
     else:
         labels = ["alone", "available", "interacting"]
 
-    ordered_labels = [l for l in labels if l in interaction_types]
+    ordered_labels = [l for l in labels if l in social_state_types]
     n_classes = len(ordered_labels)
 
     cm_counts_gt_rows = np.array(
