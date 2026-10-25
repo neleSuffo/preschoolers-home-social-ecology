@@ -2,6 +2,7 @@
 
 [![DOI (Code)](https://zenodo.org/badge/1030951680.svg)](https://doi.org/10.5281/zenodo.23651513)
 [![DOI (Detection Database)](https://zenodo.org/badge/DOI/10.5281/zenodo.23604952.svg)](https://doi.org/10.5281/zenodo.23604952)
+[![Hugging Face Models](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models%20%26%20Weights-ffd21e.svg)](https://huggingface.co/NeSuf/preschoolers-home-social-ecology-weights)
 
 This repository contains the automated multimodal processing pipeline and the Bayesian statistical analysis for the paper:  
 **"The social ecology of development: The changing structure of preschoolers' everyday experiences at home"**.
@@ -22,9 +23,9 @@ We present a fully automated pipeline designed to bridge the "measurement gap" i
 │   └── ground_truth_segments.csv     # 30.19-hr validation benchmark
 │
 ├── models/                           # Fine-tuned model checkpoints (.pt)
-│   ├── yolov12_face_best.pt          # Hugging Face: Ego-child & adult face detector
-│   ├── yolov12_person_best.pt        # Hugging Face: Social partner body detector
-│   └── babyhubert_stc_best.pt        # Hugging Face: Key child vocalization classifier
+│   ├── yolov12_face_best.pt          # [Hugging Face](https://huggingface.co/NeSuf/preschoolers-home-social-ecology-weights): Ego-child & adult face detector
+│   ├── yolov12_person_best.pt        # [Hugging Face](https://huggingface.co/NeSuf/preschoolers-home-social-ecology-weights): Social partner body detector
+│   └── babyhubert_stc_best.pt        # [Hugging Face](https://huggingface.co/NeSuf/preschoolers-home-social-ecology-weights): Key child vocalization classifier
 │
 ├── paper/                            # Manuscript, Bayesian analyses & figures
 │   ├── analysis/                     # Standalone Bayesian analysis workflows
@@ -112,6 +113,14 @@ This project uses **Poetry** for dependency management. This ensures that all re
    poetry shell
    ```
 
+### Model Checkpoints
+Pre-trained model weights are hosted on Hugging Face:  
+**[huggingface.co/NeSuf/preschoolers-home-social-ecology-weights](https://huggingface.co/NeSuf/preschoolers-home-social-ecology-weights)**
+
+Download the checkpoints into the `models/` folder using Python:
+```bash
+poetry run python -m src.feature_extraction.download_model_weights
+
 ### R Environment (Statistics)
 The statistical analysis in `results_analysis/` requires **R (version 4.2+)**. We recommend installing the following libraries:
 * `brms`: For Bayesian Multilevel Modeling.
@@ -133,7 +142,7 @@ Pre-trained model weights are located in `weights/`. If you wish to retrain or f
 
 * **Annotation Preprocessing:** Run `python feature_extraction/setup_annotations_db.py` to ingest XML annotations into a central SQL database.
 * **Face/Person Models:** Navigate to the respective subfolders in `models/`. Use `create_input_txt_files.py --fetch-annotations` to prepare YOLO-formatted datasets, and train using `train_yolo.py`.
-* **Speech Type:** We utilized the [VTC 2.0 framework](https://github.com/arxaqapi/vtc-finetune) to fine-tune Voice Type Classification for our specific home environment classes. The final weights are included in this repository.
+* **Speech Type:** We utilized the [VTC 2.0 framework](https://github.com/arxaqapi/vtc-finetune) to fine-tune Voice Type Classification for our specific home environment classes.
 
 ### 2. Video Inference
 Run the automated inference on your raw dataset to populate the results database:
@@ -173,14 +182,16 @@ poetry run python -m src.pipeline.pipeline_runner
 
 ---
 ## Citation
-## Citation
-If you use this pipeline or data in your research, please cite the associated preprint and archives:
+```markdown
+## Citation & Open Assets
+If you use this pipeline, models, or data in your research, please cite:
 
 > Suffo, N.-P., Suffo, A., Martin, P.-E., Kim, Y., Zahra, A., Haun, D., & Bohn, M. (2026). *The Social Ecology of Development: The Changing Structure of Preschoolers’ Everyday Experiences*. https://doi.org/10.31234/osf.io/bmz3e_v2
 
 * **Code Pipeline (Zenodo):** [![DOI](https://zenodo.org/badge/1030951680.svg)](https://doi.org/10.5281/zenodo.23651513)
 * **Inference Dataset (Zenodo):** [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23604952.svg)](https://doi.org/10.5281/zenodo.23604952)
-* 
+* **Model Checkpoints (Hugging Face):** [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-ffd21e.svg)](https://huggingface.co/NeSuf/preschoolers-home-social-ecology-weights)
+
 ```bibtex
 @online{suffoSocialEcologyDevelopment2026,
   title = {The Social Ecology of Development: {{The}} Changing Structure of Preschoolers’ Everyday Experiences},
