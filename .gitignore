@@ -679,6 +679,8 @@ dmypy.json
 *.tex
 *.db
 *.ckpt
+frame_level_social_interactions.csv
+05_interaction_composition.csv
 #models/
 checkpoints/
 *.mp4
