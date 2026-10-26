@@ -80,7 +80,7 @@ output:
   papaja::apa6_pdf:
     toc: true
     toc_depth: 2
-bibliography: "bibliography2.bib"
+bibliography: "bibliography.bib"
 csl: apa.csl
 ---
 
@@ -1233,7 +1233,7 @@ To capture sustained direct communication that may not contain immediate child v
 R_{3,v,t} = \mathbb{I}\left(P^{\text{KCDS}}_{v,t} \ge `r sustained_kcds_threshold` \;\land\; S^{\text{presence}}_{v,t} \ge `r audio_visual_gating_floor`\right).
 \]
 
-Here, the speech proportion $P^{\text{KCDS}}_{v,t}$ was the fraction of sampled frames labeled as child-directed speech within a backward-looking window ($W^{\text{kcds}}_t =$ `r sustained_kcds_window_sec` s):
+Here, the speech proportion $P^{\text{KCDS}}_{v,t}$ was the proportion of sampled frames labeled as child-directed speech within a backward-looking window ($W^{\text{kcds}}_t =$ `r sustained_kcds_window_sec` s):
 
 $$
 P^{\text{KCDS}}_{v,t} = \frac{1}{\vert{}W^{\text{kcds}}\vert{}} \sum_{j \in W^{\text{kcds}}_t} \mathbb{I}\left(\text{Speech}_{v,j} = \text{KCDS}\right).
@@ -1252,7 +1252,7 @@ When children are not actively interacting, communicative partners frequently re
 $$
 R_{4,v,t} = \mathbb{I}\left(A_{v,t} = 1 \;\lor\; M_{v,t} = 1\right).
 $$
-The high-confidence anchor ($A_{v,t}$) captured a close or clearly detected face which provided strong evidence of a social partner. An instantaneous anchor flag ($a_{v,t}$) was triggered whenever face proximity or face confidence exceeded their thresholds:
+The high-confidence anchor $A_{v,t}$ captured a close or clearly detected face which provided strong evidence of a social partner. An instantaneous anchor flag ($a_{v,t}$) was triggered whenever face proximity or face confidence exceeded their thresholds:
 
 
 \[
@@ -1266,20 +1266,20 @@ This anchor was sustained across a centered temporal window of $W^{\text{anchor}
 $$
 A_{v,t} = \max_{j \in W^{\text{anchor}}_t} a_{v,j}
 $$
-Second, to maintain continuity for distant, moving, or partially occluded partners, a short-term memory buffer ($M_{v,t}$) evaluated whether the instantaneous presence confidence $C^{\text{inst}}_{v,j}$ met or exceeded `r instant_confidence_threshold` within a centered window of $W^{\text{mem}}_t$ = `r short_term_visual_memory_sec` seconds:
+Second, to maintain continuity for distant, moving, or partially occluded partners, a short-term memory buffer $M_{v,t}$ evaluated whether the instantaneous presence confidence $C^{\text{inst}}_{v,j}$ met or exceeded `r instant_confidence_threshold` within a centered window of $W^{\text{mem}}_t$ = `r short_term_visual_memory_sec` seconds:
 
 \[
 M_{v,t} = \mathbb{I}\left( \max_{j \in W^{\text{mem}}_t} C^{\text{inst}}_{v,j} \ge `r instant_confidence_threshold` \right).
 \]
 
 ### Rule 5: Intermittent Speech
-Passive co-presence in the home environment is frequently accompanied by overheard background conversations that are not directly addressed to the camera-wearing child. Rule 5 captured these communicative contexts by detecting sustained intervals of OverHeard Speech alongside visual evidence of a social partner:
+Passive co-presence in the home environment is frequently accompanied by overheard background conversations that are not directly addressed to the camera-wearing child. Rule 5 captured these communicative contexts by detecting sustained intervals of overheard Speech alongside visual evidence of a social partner:
 
 \[
 R_{5,v,t} = \mathbb{I}\left( P^{\text{OHS}}_{v,t} \ge `r sustained_ohs_threshold` \;\land\; S^{\text{presence}}_{v,t} \ge `r audio_visual_gating_floor` \right).
 \]
 
-Here, the speech proportion $P^{\text{OHS}}_{v,t}$ was the fraction of sampled frames labeled as overheard speech within a backward-looking window ($W^{\text{ohs}}_t =$ `r sustained_ohs_window_sec` s):
+Here, the speech proportion $P^{\text{OHS}}_{v,t}$ was the proportion of sampled frames labeled as overheard speech within a backward-looking window ($W^{\text{ohs}}_t =$ `r sustained_ohs_window_sec` s):
 
 \[
 P^{\mathrm{OHS}}_{v,t} =\frac{1}{\lvert W^{\mathrm{ohs}} \rvert}
@@ -1314,9 +1314,9 @@ $$
 where $\beta$ is the complexity penalty parameter ($\beta=$ `r cpd_penalty`). This penalty controls segmentation granularity: higher values prevent over-segmentation by requiring substantial, sustained shifts in visual presence to introduce new segment boundaries.
 
 ### Segment-Level Social State Assignment
-Once PELT partitioned the recording into candidate segments $[\tau_{i-1} + 1, \tau_i]$, each segment was assigned a single social state. This assignment was based on two factors: whether an explicit classification rule was activated within the segment, and what fraction of frames were classified as what state on the frame level.  
+Once PELT partitioned the recording into candidate segments $[\tau_{i-1} + 1, \tau_i]$, each segment was assigned a single social state based on the proportion of frames that were provisionally assigned to each state.  
 
-Let $d_s$ represent the frame density of social state $s$; the proportion of sampled frames within a segment slice that was provisionally classified into state $s$:
+Let $d_s$ represent the frame proportion of social state $s$, defined as the proportion of sampled frames within a segment slice assigned to provisional state $s$:
 
 $$
 d_s = \frac{1}{N_{\mathrm{slice}}} \sum_{t \in \mathrm{slice}}
@@ -1336,9 +1336,9 @@ d_{\text{int}} \geq `r cpd_interacting_threshold`, \\[4pt]
 \end{cases}
 \]
 
-1. Interacting: A segment was categorized as Interacting if the interaction frame density $d_{\text{int}}$ (the proportion of frames triggering Rule 1, 2, or 3) met or exceeded `r cpd_interacting_threshold * 100`%. This requirement ensured that isolated detections cannot convert an entire segment into an interaction while allowing brief frame dropouts caused by partner occlusion or momentary motion blur.
-2. Available: If the interaction criteria were not satisfied, the segment was classified as Available if the combined social presence frame density $(d_{\text{int}} +d_{\text{avl}})$, represented as the proportion of frames triggering either active interaction (Rules 1-3) or passive co-presence (Rules 4-5) met or exceeded `r cpd_total_presence_floor * 100`%. This captured sustained periods where an interaction partner was in the immediate environment but not actively engaging with the child.
-3. Alone: Any slices failing to meet the minimum density defaulted to the baseline state of Alone.
+1. Interacting: A segment was categorized as Interacting if the interaction frame proportion $d_{\text{int}}$ (the proportion of frames triggering Rule 1, 2, or 3) met or exceeded `r cpd_interacting_threshold * 100`%. This requirement ensured that isolated detections could not convert an entire segment into an interaction while allowing brief frame dropouts caused by partner occlusion or momentary motion blur.
+2. Available: If the interaction criteria were not satisfied, the segment was classified as Available if the combined social presence frame proportion $(d_{\text{int}} +d_{\text{avl}})$, represented as the proportion of frames triggering either active interaction (Rules 1-3) or passive co-presence (Rules 4-5) met or exceeded `r cpd_total_presence_floor * 100`%. This captured sustained periods where an interaction partner was in the immediate environment but not actively engaging with the child.
+3. Alone: Any segment slices failing to meet the combined presence threshold defaulted to the baseline state of Alone
 
 ### Temporal Post-Processing
 Following state assignment across all PELT slices, identical frame state slices were converted into timestamped social state segments and refined via three post-processing operations: 
@@ -1371,7 +1371,6 @@ segments_f1_mean <- fmt_stat(m$macro_avg_f1)
 segments_f1_sd   <- fmt_stat(sd$macro_avg_f1)
 segments_f1_min  <- fmt_stat(min_val$macro_avg_f1)
 segments_f1_max  <- fmt_stat(max_val$macro_avg_f1)
-segments_kappa   <- fmt_stat(m$overall_kappa)
 
 segments_interacting_f1        <- fmt_stat(m$interacting_f1)
 segments_interacting_precision <- fmt_stat(m$interacting_precision)
@@ -1388,30 +1387,26 @@ segments_alone_recall    <- fmt_stat(m$alone_recall)
 # create table
 # Create table
 metrics_sd_df <- data.frame(
-  Metric = c("F1 Score", "Precision", "Recall", "Cohen's $\\kappa$"),
+  Metric = c("F1 Score", "Precision", "Recall"),
   Interacting = c(
     fmt_sd(m$interacting_f1, sd$interacting_f1),
     fmt_sd(m$interacting_precision, sd$interacting_precision),
-    fmt_sd(m$interacting_recall, sd$interacting_recall),
-    "—"
+    fmt_sd(m$interacting_recall, sd$interacting_recall)
   ),
   Available = c(
     fmt_sd(m$available_f1, sd$available_f1),
     fmt_sd(m$available_precision, sd$available_precision),
-    fmt_sd(m$available_recall, sd$available_recall),
-    "—"
+    fmt_sd(m$available_recall, sd$available_recall)
   ),
   Alone = c(
     fmt_sd(m$alone_f1, sd$alone_f1),
     fmt_sd(m$alone_precision, sd$alone_precision),
-    fmt_sd(m$alone_recall, sd$alone_recall),
-    "—"
+    fmt_sd(m$alone_recall, sd$alone_recall)
   ),
   `Macro AVG / Overall` = c(
     fmt_sd(m$macro_avg_f1, sd$macro_avg_f1),
     fmt_sd(m$macro_avg_precision, sd$macro_avg_precision),
-    fmt_sd(m$macro_avg_recall, sd$macro_avg_recall),
-    fmt_sd(m$overall_kappa, sd$overall_kappa)
+    fmt_sd(m$macro_avg_recall, sd$macro_avg_recall)
   ),
   check.names = FALSE,
   stringsAsFactors = FALSE
@@ -1422,8 +1417,8 @@ colnames(metrics_sd_df)[1] <- " "
 apa_table(
   metrics_sd_df,
   caption = "Detailed Performance Metrics by Social State across group 5-fold cross-validation.", 
-  note = "Values represent means with standard deviations across the five validation folds reported in parentheses ($M \\pm SD$). Precision, Recall, and F1 scores were calculated per-second. Dashes indicate that Cohen's $\\kappa$ is an overall multi-class metric evaluated across all three states rather than per category.",
-  align = c("l", "c", "c", "c", "c"),
+  note = "Values represent means with standard deviations across the five validation folds reported in parentheses ($M \\pm SD$). Precision, Recall, and F1 scores were calculated per-second.",
+  align = c("l", "c", "c", "c"),
   escape = FALSE
 )
 ```
@@ -1489,39 +1484,39 @@ hyperparameters_data <- data.frame(
     "Minimum proportion of frames within window containing active OHS",
     "",
     "Complexity penalty ($\\beta$) for PELT segmentation on visual presence",
-    "Minimum frame density of interaction ($d_{\\text{int}}$) to assign Interacting",
-    "Minimum combined presence density ($d_{\\text{int}} + d_{\\text{avl}}$) to assign Available",
+    "Minimum frame proportion of interaction ($d_{\\text{int}}$) to assign Interacting",
+    "Minimum combined presence proportion ($d_{\\text{int}} + d_{\\text{avl}}$) to assign Available",
     "",
     "Maximum temporal gap between same-state segments for automatic merging",
     "Maximum unassigned boundary gap extended by the preceding state"
   ),
   Winning_Value = c(
     "",
-    sprintf("%.2f", audio_visual_gating_floor),
-    sprintf("%.2f", instant_confidence_threshold),
+    sprintf("%.2f", audio_visual_gating_floor),           # 0.35
+    sprintf("%.2f", instant_confidence_threshold),        # 0.15
     "",
-    sprintf("%.1f s", max_turn_taking_gap_sec),
-    sprintf("%.2f s", max_same_speaker_gap_sec),
+    sprintf("%.1f s", max_turn_taking_gap_sec),           # 5.0 s
+    sprintf("%.1f s", max_same_speaker_gap_sec),          # 1.0 s  <-- updated from %.2f
     "",
-    sprintf("%.2f", proximity_threshold),
+    sprintf("%.2f", proximity_threshold),                 # 0.60
     "",
-    sprintf("%.1f s", sustained_kcds_window_sec),
-    sprintf("%.2f", sustained_kcds_threshold),
+    sprintf("%.1f s", sustained_kcds_window_sec),         # 10.0 s
+    sprintf("%.2f", sustained_kcds_threshold),            # 0.95
     "",
-    sprintf("%.2f", high_confidence_proximity_threshold),
-    sprintf("%.2f", high_confidence_face_confidence),
-    sprintf("%.1f s", visual_persistence_sec),
-    sprintf("%.1f s", short_term_visual_memory_sec),
+    sprintf("%.2f", high_confidence_proximity_threshold), # 0.65
+    sprintf("%.2f", high_confidence_face_confidence),     # 0.85
+    sprintf("%.1f s", visual_persistence_sec),            # 3.0 s
+    sprintf("%.1f s", short_term_visual_memory_sec),      # 3.5 s
     "",
-    sprintf("%.1f s", sustained_ohs_window_sec),
-    sprintf("%.2f", sustained_ohs_threshold),
+    sprintf("%.1f s", sustained_ohs_window_sec),          # 10.0 s
+    sprintf("%.2f", sustained_ohs_threshold),             # 0.65
     "",
-    sprintf("%.1f", cpd_penalty),
-    sprintf("%.2f", cpd_interacting_threshold),
-    sprintf("%.2f", cpd_total_presence_floor),
+    sprintf("%.1f", cpd_penalty),                         # 5.0
+    sprintf("%.2f", cpd_interacting_threshold),           # 0.40
+    sprintf("%.2f", cpd_total_presence_floor),            # 0.45
     "",
-    sprintf("%.1f s", same_segment_merge_threshold),
-    sprintf("%.1f s", gap_stretch_threshold)
+    sprintf("%.1f s", same_segment_merge_threshold),      # 3.0 s
+    sprintf("%.1f s", gap_stretch_threshold)              # 2.0 s
   ),
   stringsAsFactors = FALSE
 )
@@ -1541,7 +1536,7 @@ apa_table(
 ```
 
 ## Performance Analysis
-Automated classifications were evaluated against the social-state ground-truth dataset across all sampled frames. Generalization stability was assessed via child-grouped 5-fold cross-validation, with the overall multi-class performance of the selected winning configuration quantified via macro $F_1$ and Cohen's Kappa $\kappa$.
+Automated classifications were evaluated against the social-state ground-truth dataset across all sampled frames. Generalization stability was assessed via child-grouped 5-fold cross-validation, with the overall multi-class performance of the selected winning configuration quantified via macro $F_1$.
 
 ### Cross-Fold Consistency
 The pipeline demonstrated robust stability across diverse home environments and individual children. As shown in Table \@ref(tab:segments-fold-metrics), the pipeline achieved a mean Macro $F_1$ score of `r segments_f1_mean` ($SD$=`r segments_f1_sd`). Consistent performance across folds (ranging from `r segments_f1_min` to `r segments_f1_max`) indicates that the rule-based temporal smoothing and multi-modal integration generalize effectively without overfitting to child-specific acoustic or positional habits.
@@ -1551,7 +1546,7 @@ knitr::include_graphics("images/social_states_confusion_matrix.png")
 ```
 
 ### Categorical Performance and Trade-offs
-Performance metrics across individual social states demonstrate specific classification strengths alongside expected ecological boundary trade-offs. Evaluated across the full social-state ground-truth dataset, the pipeline attained an overall Cohen's Kappa of $\kappa =$ `r segments_kappa` and a macro $F_1$ score of `r segments_f1_mean`. In naturalistic egocentric child recordings, this $\kappa$ represents moderate-to-substantial agreement above chance while accounting for real-world state prevalence imbalances.
+Performance metrics across individual social states demonstrate specific classification strengths alongside expected ecological boundary trade-offs. Evaluated across the full social-state ground-truth dataset, the pipeline attained an overall macro $F_1$ score of `r segments_f1_mean`.
 
 Across specific categories, the pipeline achieved its highest performance for the Interacting state ($\overline{F_1}_{int}$ = `r segments_interacting_f1`, $\bar{P}_{int}$= `r segments_interacting_precision`). High precision ensures that frames flagged as active social interaction reliably reflect authentic mutual engagement. While interaction recall ($\bar{R}_{int}$= `r segments_interacting_recall`) was moderately conservative, this intentional trade-off prevented brief, incidental co-presence from artificially inflating active interaction measures.
 
@@ -1561,7 +1556,7 @@ For the Alone state, the pipeline demonstrated consistent performance ($\overlin
 Following hyperparameter optimization and validation, the finalized pipeline was applied to the complete `r quantex_sum_hours`-hour corpus. Table \@ref(tab:segment-descriptives) details the resulting segment count and duration metrics across the three social states.
 
 ```{r segment-descriptives, echo=FALSE, message=FALSE, warning=FALSE}
-interaction_segments <- read_csv("data/analysis_20261018_221629_second_submission/interaction_segments.csv")
+interaction_segments <- read_csv("data/pipeline_output/interaction_segments.csv")
 summary_stats <- interaction_segments %>%
   group_by(interaction_type) %>%
   summarise(
@@ -1624,7 +1619,7 @@ Taken together, these ground-truth analyses confirm that our primary conclusions
 \newpage
 # Supplementary Visualizations {#sup-visualizations}
 ## Qualitative Evaluation of Person Detection
-```{r person-detection-visualizations, fig.width = 6, fig.height = 6, out.width = "90%", echo=FALSE, dpi=600, fig.cap="Overview of person detection performance and error modes. Ground-truth person are shown in solid blue (GT Person), correct detections in solid green (TP: Person, confidence scores in parentheses), false positives in solid orange (FP: Person), and missed ground-truth persons (false negatives) in dashed orange (FN: GT Person). \\textbf{A, B}: True positives (TP) show robust localization of interaction partners while ignoring the camera-wearing child's own body parts (\\textbf{A}), and multiple individuals in crowded backgrounds (\\textbf{B}). \\textbf{C, D}: False positives (FP) arise from the child's own body parts at unusual camera angles (\\textbf{C}), or insufficient bounding-box overlap despite correct detection (\\textbf{D}); latter localization error is uncritical for our pipeline, which prioritizes overall person presence over precise coordinates. \\textbf{E, F}: False negatives (FN) occur when persons are very small, heavily cropped to small body parts (\\textbf{E}), or severely occluded (\\textbf{F})"}
+```{r person-detection-visualizations, fig.width = 6, fig.height = 6, out.width = "100%", echo=FALSE, dpi=600, fig.cap="Overview of person detection performance and error modes. Ground-truth person are shown in solid blue (GT Person), correct detections in solid green (TP: Person, confidence scores in parentheses), false positives in solid orange (FP: Person), and missed ground-truth persons (false negatives) in dashed orange (FN: GT Person). \\textbf{A, B}: True positives (TP) show robust localization of interaction partners while ignoring the camera-wearing child's own body parts (\\textbf{A}), and multiple individuals in crowded backgrounds (\\textbf{B}). \\textbf{C, D}: False positives (FP) arise from the child's own body parts at unusual camera angles (\\textbf{C}), or insufficient bounding-box overlap despite correct detection (\\textbf{D}); latter localization error is uncritical for our pipeline, which prioritizes overall person presence over precise coordinates. \\textbf{E, F}: False negatives (FN) occur when persons are very small, heavily cropped to small body parts (\\textbf{E}), or severely occluded (\\textbf{F})"}
 
 person_tp_1 <- ggdraw() + draw_image("images/person_tp_quantex_at_home_id255695_2022_02_12_01_014700_annotated.jpg", y = -0.025, scale = 0.98)
 person_tp_2 <- ggdraw() + draw_image("images/person_tp_quantex_at_home_id255695_2022_02_12_01_026070_annotated.png", y = -0.025, scale = 0.98)
@@ -1880,7 +1875,7 @@ ggsave(filename = "images/alone_multimodal_plot.png", plot = alone_multimodal_pl
 
 \newpage
 ## Video Timeline Examples: Pipeline vs. Ground Truth {#sup-bayesian-gt}
-```{r segment-timelines-visualizations, fig.cap="Temporal alignment between automated pipeline classifications and the social-state ground-truth dataset. \\textbf{A-C} show exemplary timeline comparisons across three different 30-minute recording sessions (1,800 seconds). For each example, upper bars display ground-truth social-state boundaries, and lower bars show the corresponding automated pipeline predictions. Human inter-rater reliability was high ($\\kappa$=0.84), whereas agreement between the consolidated ground truth and pipeline predictions was moderate ($\\kappa$=0.46). This difference occurs because the model reliably captures macro-level structure and sustained social episodes, yet rapid transitions between states remain challenging and are smoothed over by its temporal post-processing procedure.",fig.width = 6, fig.height = 6, out.width = "100%", echo=FALSE, dpi=600}
+```{r segment-timelines-visualizations, fig.cap="Temporal alignment between automated pipeline classifications and the social-state ground-truth dataset. \\textbf{A-C} show exemplary timeline comparisons across three different 30-minute recording sessions (1,800 seconds). For each example, upper bars display ground-truth social-state boundaries, and lower bars show the corresponding automated pipeline predictions. Automated classification yielded a balanced overall Macro $F_1$ score of 0.63. The pipeline reliably captures macro-level structure and sustained social episodes, yet rapid transitions between states remain challenging and are smoothed over by its temporal post-processing procedure.",fig.width = 6, fig.height = 6, out.width = "100%", echo=FALSE, dpi=600}
 
 timeline_1 <- ggdraw() + draw_image("images/quantex_at_home_id262333_2024_12_01_03_segment_timeline.png", y = -0.025, scale = 0.98)
 timeline_2 <- ggdraw() + draw_image("images/quantex_at_home_id257609_2022_11_09_02_segment_timeline.png", y = -0.025, scale = 0.98)
