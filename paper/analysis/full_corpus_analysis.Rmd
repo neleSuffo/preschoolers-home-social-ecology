@@ -23,7 +23,7 @@ library(emmeans)
 
 # How much time do children spend in different social states?
 ```{r load segments data}
-segments_data <- read_csv("data/analysis_20261018_221629_second_submission/interaction_segments.csv") %>%
+segments_data <- read_csv("../data/pipeline_output/interaction_segments.csv") %>%
   mutate(child_id = as.character(child_id)) %>%
   #filter(!child_id %in% excluded_outlier_ids) %>%
   mutate(
@@ -171,7 +171,7 @@ print(final_preds_segments)
 # How much speech does the key child produce?
 ## Part 1
 ```{r loads kcs data}
-kcs_data <- read_csv("data/analysis_20261018_221629_second_submission/02_kcs_summary.csv") %>%
+kcs_data <- read_csv("../data/pipeline_output/02_kcs_summary.csv") %>%
   mutate(child_id = as.character(child_id)) %>%
   #filter(!child_id %in% excluded_outlier_ids) %>%
   mutate(
@@ -286,7 +286,7 @@ print(kcs_results)
 
 ## Part 2
 ```{r load absolute kcs data}
-kcs_glob_data <- read_csv("data/analysis_20261018_221629_second_submission/02a_global_kcs_summary.csv") %>%
+kcs_glob_data <- read_csv("../data/pipeline_output/02a_global_kcs_summary.csv") %>%
   mutate(
     child_id = as.character(child_id),
     age = as.numeric(scale(age_at_recording)),
@@ -370,7 +370,7 @@ print(glob_results)
 # How much speech is the child exposed to? 
 ## Part 1
 ```{r loads kcds data}
-cds_total_data <- read_csv("data/analysis_20261018_221629_second_submission/03_cds_summary.csv") %>%
+cds_total_data <- read_csv("../data/pipeline_output/03_cds_summary.csv") %>%
   filter(exposure_type == "TOTAL") %>%
   mutate(
     interaction_type = factor(interaction_type, levels = c("Alone", "Available", "Interacting")),
@@ -487,7 +487,7 @@ print(kcds_results)
 
 ## Part 2
 ```{r load kcds_glob data}
-cds_total_glob_data <- read_csv("data/analysis_20261018_221629_second_submission/03a_global_cds_summary.csv") %>%
+cds_total_glob_data <- read_csv("../data/pipeline_output/03a_global_cds_summary.csv") %>%
   filter(exposure_type == "TOTAL") %>%
   mutate(
     age = as.numeric(scale(age_at_recording)),
@@ -572,7 +572,7 @@ print(cds_glob_results)
 # How is children’s conversational turn taking behavior characterized?
 ## Part 1
 ```{r load turn taking data}
-turn_taking_raw <- read_csv("data/analysis_20261018_221629_second_submission/04_turn_taking_summary.csv") %>%
+turn_taking_raw <- read_csv("../data/pipeline_output/04_turn_taking_summary.csv") %>%
   mutate(child_id = as.character(child_id)) %>%
   #filter(!child_id %in% excluded_outlier_ids) %>%
   mutate(
@@ -814,7 +814,7 @@ print(agency_results)
 ## Part 3
 ```{r load turn duration data}
 # Load the raw vocalization durations
-turn_duration_raw <- read_csv("data/analysis_20261018_221629_second_submission/04b_turn_durations_summary.csv") %>%
+turn_duration_raw <- read_csv("../data/pipeline_output/04b_turn_durations_summary.csv") %>%
   mutate(
     child_id = as.character(child_id),
     age = scale(as.numeric(age_at_recording))
@@ -909,7 +909,7 @@ print(dur_results)
 
 ## Part 4
 ```{r load turn-taking_glob data}
-turn_taking_glob_data <- read_csv("data/analysis_20261018_221629_second_submission/04a_global_turn_taking_summary.csv") %>%
+turn_taking_glob_data <- read_csv("../data/pipeline_output/04a_global_turn_taking_summary.csv") %>%
   mutate(
     child_id = as.character(child_id),
     age = scale(age_at_recording),
@@ -994,7 +994,7 @@ print(turn_taking_glob_results)
 
 ## Part 5
 ```{r load turn-gap duration data}
-turn_gap_data <- read_csv("data/analysis_20261018_221629_second_submission/04c_turn_gaps_summary.csv") %>%
+turn_gap_data <- read_csv("../data/pipeline_output/04c_turn_gaps_summary.csv") %>%
   mutate(
     child_id = as.character(child_id),
     age = scale(age_at_recording),
@@ -1180,7 +1180,7 @@ print(block_duration_results)
 
 # How do environmental cues predict active social interaction?
 ```{r loads aspects data}
-aspects_data <- read_csv("data/analysis_20261018_221629_second_submission/05_interaction_composition.csv") %>%
+aspects_data <- read_csv("../data/pipeline_output/05_interaction_composition.csv") %>%
   mutate(
     age = (scale(as.numeric(age_at_recording))),
     child_id = as.character(child_id)
@@ -1205,7 +1205,7 @@ aspects_data_m <- bind_rows(
     .groups = "drop"
   )
 
-write_csv(aspects_data_m, "data/analysis_20261018_221629_second_submission/05_interaction_composition_model.csv")
+write_csv(aspects_data_m, "../data/pipeline_output/05_interaction_composition_model.csv")
 
 # Process for plotting points: one value per child per condition
 aspects_data_p <- aspects_data_m %>%
