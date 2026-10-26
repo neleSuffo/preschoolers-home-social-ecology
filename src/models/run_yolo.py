@@ -4,8 +4,9 @@ src/models/run_yolo.py
 Unified inference and visualization script for YOLO person and face detectors.
 
 This module consolidates inference, bounding box extraction, ground-truth IoU
-evaluation (marking TP, FP, and FN), continuous face proximity computation,
-and optional face crop exports into a single CLI tool.
+evaluation (marking TP, FP, and FN), continuous face proximity computation
+into a single CLI tool. Automatically triggers weight downloads from Hugging Face 
+if local checkpoints are missing.
 """
 
 import argparse
@@ -20,6 +21,7 @@ from supervision import Detections
 from ultralytics import YOLO
 
 from src.constants import BasePaths, ModelAssets
+from src.feature_extraction.download_model_weights import download_weights
 from src.models.proximity import calculate_proximity
 
 # ---------------------------------------------------------------------------
@@ -64,7 +66,7 @@ def process_image(model: YOLO, image_path: Path) -> Tuple[np.ndarray, Detections
         A 2-tuple containing:
         - The source image as a NumPy BGR array (H, W, C).
         - A supervision Detections object containing coordinates (.xyxy),
-          confidences (.confidence), and predicted class IDs (.class_id).
+        confidences (.confidence), and predicted class IDs (.class_id).
 
     Raises
     ------
@@ -555,12 +557,21 @@ def main() -> int:
         weights_path = ModelAssets.PERSON_MODEL_PATH
         default_out = BasePaths.OUTPUT_DIR / "person_detection"
 
+    # Automatically fetch model weights from Hugging Face if missing
     if not weights_path.exists():
-        logger.error(
-            "Model checkpoint not found at %s. Run download_assets.py first.",
+        logger.warning(
+            "Model checkpoint missing at %s. Automatically downloading from Hugging Face...",
             weights_path,
         )
-        return 1
+        try:
+            download_weights(weights_list=[weights_path.name])
+        except Exception as e:
+            logger.error(
+                "Automated weight download failed for '%s': %s",
+                weights_path.name,
+                e,
+            )
+            return 1
 
     out_dir = Path(args.output_dir) if args.output_dir else default_out
     labels_dir = Path(args.labels_dir) if args.labels_dir else None

@@ -19,6 +19,7 @@ from ultralytics import YOLO
 
 from src.config import DetectionConfig, VideoSpecs
 from src.constants import AnalysisPaths, ModelAssets, PipelineLogs
+from src.feature_extraction.download_model_weights import download_weights
 from src.feature_extraction.utils import (
     extract_frame_number,
     get_frame_paths,
@@ -400,6 +401,18 @@ def run_pipeline(
     if not pending:
         logger.info("All %d requested videos have already been processed for %s.", len(video_list), task)
         return
+
+    # Ensure custom fine-tuned weights exist; automatically fetch from Hugging Face if missing
+    if task in ("face", "person") and not weights_path.exists():
+        logger.warning(
+            "Model checkpoint missing at %s. Automatically downloading from Hugging Face...",
+            weights_path,
+        )
+        try:
+            download_weights(weights_list=[weights_path.name])
+        except Exception as e:
+            logger.error("Automated weight download failed for '%s': %s", weights_path.name, e)
+            return
 
     logger.info("Loading model weights for %s from: %s", task, weights_path)
     model = YOLO(str(weights_path))

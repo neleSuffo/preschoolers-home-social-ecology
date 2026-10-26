@@ -21,6 +21,7 @@ from ultralytics import YOLO
 from src.config import AnalysisConfig
 from src.constants import AnalysisPaths, ModelAssets
 from src.models.proximity import calculate_proximity
+from src.feature_extraction.download_model_weights import download_weights
 
 logging.basicConfig(
     level=logging.INFO,
@@ -610,12 +611,17 @@ def main() -> None:
     segments_df = load_csv_data(args.segments_csv)
 
     # Verify model weights before executing inference
-    if not ModelAssets.FACE_MODEL_PATH.exists() or not ModelAssets.PERSON_MODEL_PATH.exists():
-        logger.error(
-            "Model weights missing in %s. Please run python -m src.feature_extraction.download_assets first.",
-            ModelAssets.FACE_MODEL_PATH.parent,
-        )
-        return
+    for weight_path in [ModelAssets.FACE_MODEL_PATH, ModelAssets.PERSON_MODEL_PATH]:
+        if not weight_path.exists():
+            logger.warning(
+                "Model checkpoint missing at %s. Automatically downloading from Hugging Face...",
+                weight_path,
+            )
+            try:
+                download_weights(weights_list=[weight_path.name])
+            except Exception as e:
+                logger.error("Automated weight download failed for '%s': %s", weight_path.name, e)
+                return
 
     logger.info("Loading YOLO weights...")
     face_model = YOLO(str(ModelAssets.FACE_MODEL_PATH))
