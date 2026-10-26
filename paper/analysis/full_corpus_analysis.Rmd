@@ -1180,38 +1180,44 @@ print(block_duration_results)
 
 # How do environmental cues predict active social interaction?
 ```{r loads aspects data}
-aspects_data <- read_csv("../data/pipeline_output/05_interaction_composition.csv") %>%
-  mutate(
-    age = (scale(as.numeric(age_at_recording))),
-    child_id = as.character(child_id)
-  )
+model_csv_path <- "../data/pipeline_output/05_interaction_composition_model.csv"
+raw_aspects_path <- "../data/pipeline_output/05_interaction_composition.csv"
 
-aspects_data_m <- bind_rows(
-  aspects_data %>% filter(
-    has_cds == 1 & has_ohs == 0 & has_face == 0 & has_person == 0) %>% mutate(condition = "Only KCDS Present"),
-  aspects_data %>% filter(
-    (has_cds == 1 | has_ohs == 1) & has_face == 0 & has_person == 0) %>% mutate(condition = "Only Speech Present"),
-  aspects_data %>% filter(
-    has_cds == 0 & has_ohs == 0 & has_face == 1 & has_person == 0) %>% mutate(condition = "Only Face Present"),
-  aspects_data %>% filter(
-    has_cds == 0 & has_ohs == 0 & has_face == 0 & has_person == 1) %>% mutate(condition = "Only Person Present"),
-) %>%
-  group_by(child_id, condition) %>%
-  summarize(
-    age = min(age),
-    age_at_recording = min(age_at_recording),
-    n = n(),
-    p = sum(is_interaction),
-    .groups = "drop"
-  )
+if (file.exists(model_csv_path)) {
+  # Load the lightweight pre-aggregated model dataset directly
+  aspects_data_m <- read_csv(model_csv_path)
+} else if (file.exists(raw_aspects_path)) {
+  # Aggregate from raw cue composition if present
+  aspects_data <- read_csv(raw_aspects_path) %>%
+    mutate(
+      age = scale(as.numeric(age_at_recording)),
+      child_id = as.character(child_id)
+    )
+  
+  aspects_data_m <- bind_rows(
+    aspects_data %>% filter(has_cds == 1 & has_ohs == 0 & has_face == 0 & has_person == 0) %>% mutate(condition = "Only KCDS Present"),
+    aspects_data %>% filter((has_cds == 1 | has_ohs == 1) & has_face == 0 & has_person == 0) %>% mutate(condition = "Only Speech Present"),
+    aspects_data %>% filter(has_cds == 0 & has_ohs == 0 & has_face == 1 & has_person == 0) %>% mutate(condition = "Only Face Present"),
+    aspects_data %>% filter(has_cds == 0 & has_ohs == 0 & has_face == 0 & has_person == 1) %>% mutate(condition = "Only Person Present")
+  ) %>%
+    group_by(child_id, condition) %>%
+    summarize(
+      age = min(age),
+      age_at_recording = min(age_at_recording),
+      n = n(),
+      p = sum(is_interaction),
+      .groups = "drop"
+    )
 
-write_csv(aspects_data_m, "../data/pipeline_output/05_interaction_composition_model.csv")
+  write_csv(aspects_data_m, model_csv_path)
+} else {
+  stop("Neither 05_interaction_composition_model.csv nor 05_interaction_composition.csv was found.")
+}
 
-# Process for plotting points: one value per child per condition
+# Process points for empirical plotting
 aspects_data_p <- aspects_data_m %>%
   group_by(child_id, condition) %>%
   summarize(
-    # Total trials (n) and total successes (p) across all recordings for this child
     total_n = sum(n),
     total_p = sum(p),
     prop = total_p / total_n,
