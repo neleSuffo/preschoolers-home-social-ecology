@@ -94,3 +94,140 @@ It provides an end-to-end, open-source computational pipeline that allows resear
 ├── poetry.lock                       # Deterministic Python dependency lockfile
 ├── pyproject.toml                    # Poetry package configuration & dependencies
 └── README.md                         # Repository documentation
+```
+
+> **Note on Large Assets:**  
+> Large files (`data/inference.db` and checkpoints in `models/`) are managed externally. They can be downloaded directly from Zenodo and Hugging Face as described below.
+
+## Installation & Setup
+
+### 1. Python Environment (Poetry)
+This project uses **Poetry** (with Python 3.12) for dependency locking:
+
+```bash
+# Clone the repository
+git clone https://github.com/neleSuffo/preschoolers-home-social-ecology.git
+cd preschoolers-home-social-ecology
+
+# Install dependencies into virtual environment
+poetry install
+```
+
+### 2. Download the Inference Database
+Download `inference.db` from the Zenodo record and place it into the `data/` directory:
+
+* **Zenodo Dataset DOI:** [10.5281/zenodo.23604952](https://doi.org/10.5281/zenodo.23604952)
+* Target path: `data/inference.db`
+
+### 3. Model Weights (Hugging Face)
+Pre-trained model checkpoints are hosted on Hugging Face:  
+**[huggingface.co/NeSuf/preschoolers-home-social-ecology-weights](https://huggingface.co/NeSuf/preschoolers-home-social-ecology-weights)**
+
+Download the checkpoints into `models/`:
+```bash
+poetry run python -m src.feature_extraction.download_model_weights
+```
+*(Alternatively, pipeline and visualization scripts will automatically download required weights on demand if they are not detected locally).*
+
+### 4. R Environment (Bayesian Statistics)
+Compiling the manuscript and executing Bayesian models in `paper/analysis/` requires **R (version 4.2+)**:
+```r
+install.packages(c("tidyverse", "brms", "projpred", "cowplot", "patchwork", "magick", "papaja"))
+```
+
+## Pipeline Execution & Analysis
+
+All pipeline scripts run from the repository root via Poetry.
+
+### 1. Full Corpus Reconstruction
+To run the multimodal rule engine and PELT change-point segmentation over the complete database:
+```bash
+poetry run python -m src.pipeline.pipeline_runner
+```
+
+### 2. Group Cross-Validation Benchmark
+To run the group 5-fold cross-validation against the human ground-truth benchmark (reporting F1, Precision, and Recall):
+```bash
+poetry run python -m src.pipeline.pipeline_orchestrator --mode validation
+```
+
+### 3. Hyperparameter Tuning
+To perform random-sampling or grid search over candidate a specified parameter search grid:
+```bash
+poetry run python -m src.pipeline.pipeline_orchestrator --mode tuning --max_combos 20
+```
+
+### 4. Segment Evaluation & Confusion Matrix
+To evaluate final segment predictions against human ground truth and calculate confusion matrices:
+```bash
+poetry run python -m src.evaluation.eval_segment_performance
+```
+
+---
+
+## Visualizations
+
+### 1. Representative Frame Sequences with HUD Checklist
+Render publication-ready qualitative exemplar frames showing YOLO detections, continuous proximity badges, acoustic tokens, and active rule checklists:
+```bash
+# State Exemplars
+poetry run python -m src.visualization.plot_multimodal_social_state_frames --image_path data/frames_interacting --align left
+poetry run python -m src.visualization.plot_multimodal_social_state_frames --image_path data/frames_alone --align right
+poetry run python -m src.visualization.plot_multimodal_social_state_frames --image_path data/frames_available --align left
+```
+
+### 2. Video Timelines: Pipeline vs. Ground Truth
+Generate comparative continuous timeline plots for individual video recordings:
+```bash
+# Single session timeline with legend
+poetry run python -m src.visualization.plot_segments_timeline --video quantex_at_home_id262333_2024_12_01_03
+poetry run python -m src.visualization.plot_segments_timeline --video quantex_at_home_id257609_2022_11_09_02 --no_legend
+poetry run python -m src.visualization.plot_segments_timeline --video quantex_at_home_id260106_2022_11_13_01 --no_legend
+```
+
+### 3. Proximity and Face Location Heatmaps
+Generate 2D spatial face distribution density heatmaps across developmental social states:
+```bash
+# Ground-truth validation sub-corpus
+poetry run python -m src.visualization.plot_face_heatmaps --dataset gt
+
+# Full unannotated home corpus (N = 107)
+poetry run python -m src.visualization.plot_face_heatmaps --dataset full
+```
+
+---
+
+## Model Benchmark Performance
+
+Evaluating the automated reconstruction pipeline against the human ground-truth benchmark (30.19 hours across 14 children) yields the following performance across folds:
+
+| Metric | Interacting | Available | Alone | Macro Average |
+| :--- | :--- | :--- | :--- | :--- |
+| **F1-Score** | 0.74 ± 0.06 | 0.57 ± 0.04 | 0.58 ± 0.12 | 0.63 ± 0.03 |
+| **Precision** | 0.84 ± 0.02 | 0.50 ± 0.05 | 0.60 ± 0.07 | 0.65 ± 0.03 |
+| **Recall** | 0.67 ± 0.10 | 0.66 ± 0.07 | 0.58 ± 0.19 | 0.64 ± 0.04 |
+
+---
+
+## Citation & Open Assets
+
+If you use this pipeline, models, or data in your research, please cite:
+
+> Suffo, N.-P., Suffo, A., Martin, P.-E., Kim, Y., Zahra, A., Haun, D., & Bohn, M. (2026). *The Social Ecology of Development: The Changing Structure of Preschoolers’ Everyday Experiences*. https://doi.org/10.31234/osf.io/bmz3e_v2
+
+* **Code Pipeline (Zenodo):** [![DOI](https://zenodo.org/badge/1030951680.svg)](https://doi.org/10.5281/zenodo.23651513)
+* **Inference Dataset (Zenodo):** [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23604952.svg)](https://doi.org/10.5281/zenodo.23604952)
+* **Model Checkpoints (Hugging Face):** [![Hugging Face](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-ffd21e.svg)](https://huggingface.co/NeSuf/preschoolers-home-social-ecology-weights)
+
+```bibtex
+@online{suffoSocialEcologyDevelopment2026,
+  title = {The Social Ecology of Development: {{The}} Changing Structure of Preschoolers’ Everyday Experiences},
+  shorttitle = {The Social Ecology of Development},
+  author = {Suffo, Nele-Pauline and Suffo, Anas and Martin, Pierre-Etienne and Kim, Yujin and Zahra, Anam and Haun, Daniel and Bohn, Manuel},
+  date = {2026-06-30},
+  doi = {10.31234/osf.io/bmz3e_v2},
+  url = {https://doi.org/10.31234/osf.io/bmz3e_v2},
+  urldate = {2026-07-04},
+  pubstate = {prepublished}
+}
+```
