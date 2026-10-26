@@ -117,7 +117,7 @@ def run_pipeline_for_combo(
                 original_config[key] = getattr(AnalysisConfig, key)
                 setattr(AnalysisConfig, key, value)
 
-        frame_output_path = combo_dir / AnalysisPaths.INTERACTION_SEGMENTS_CSV.name
+        frame_output_path = combo_dir / AnalysisPaths.FRAME_INTERACTIONS_CSV.name
         segment_output_path = combo_dir / AnalysisPaths.INTERACTION_SEGMENTS_CSV.name
 
         # 1. Vectorized Frame-Level Evaluation

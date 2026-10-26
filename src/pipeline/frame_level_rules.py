@@ -456,7 +456,7 @@ def main(
 
         if all_data.empty:
             logger.warning("No frame data returned from database query.")
-            output_path = dest_dir / "frame_level_social_interactions.csv"
+            output_path = dest_dir / AnalysisPaths.FRAME_INTERACTIONS_CSV.name
             all_data.to_csv(output_path, index=False)
             return output_path
 
@@ -469,7 +469,7 @@ def main(
         # 3. Rule classification
         all_data = classify_frames(all_data, social_state_mode=social_state_mode)
 
-        output_path = dest_dir / "frame_level_social_interactions.csv"
+        output_path = dest_dir / AnalysisPaths.FRAME_INTERACTIONS_CSV.name
         all_data.to_csv(output_path, index=False)
         logger.info("Frame-level analysis saved to: %s", output_path)
         return output_path
