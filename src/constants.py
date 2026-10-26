@@ -12,7 +12,7 @@ class BasePaths:
 
     BASE_DIR = Path(__file__).resolve().parent.parent
     DATA_DIR = BASE_DIR / "data"
-    MODELS_DIR = BASE_DIR / "models"
+    MODELS_DIR = BASE_DIR / "weights"
     OUTPUT_DIR = BASE_DIR / "outputs"
     LOGGING_DIR = OUTPUT_DIR / "logs"
     
@@ -23,7 +23,7 @@ class ModelAssets:
 
     FACE_WEIGHTS_NAME = "yolov12_face_best.pt"
     PERSON_WEIGHTS_NAME = "yolov12_person_best.pt"
-    AUDIO_WEIGHTS_NAME = "babyhubert_stc_best.pt"
+    AUDIO_WEIGHTS_NAME = "babyhubert_stc_best.ckpt"
 
     WEIGHTS_LIST = [
         FACE_WEIGHTS_NAME,
