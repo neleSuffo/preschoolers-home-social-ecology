@@ -685,6 +685,7 @@ checkpoints/
 *.avi
 *.mov
 *.mkv
+*.gz
 outputs/
 # IDE
 .vscode/
