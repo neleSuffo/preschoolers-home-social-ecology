@@ -221,13 +221,13 @@ If you use this pipeline, models, or data in your research, please cite:
 
 ```bibtex
 @online{suffoSocialEcologyDevelopment2026,
-  title = {The Social Ecology of Development: {{The}} Changing Structure of Preschoolers’ Everyday Experiences},
+  title = {The Social Ecology of Development: {{The}} Changing Structure of Preschoolers’ Everyday Experiences At Home},
   shorttitle = {The Social Ecology of Development},
   author = {Suffo, Nele-Pauline and Suffo, Anas and Martin, Pierre-Etienne and Kim, Yujin and Zahra, Anam and Haun, Daniel and Bohn, Manuel},
-  date = {2026-06-30},
+  date = {2026-10-24},
   doi = {10.31234/osf.io/bmz3e_v2},
   url = {https://doi.org/10.31234/osf.io/bmz3e_v2},
-  urldate = {2026-07-04},
+  urldate = {2026-10-25},
   pubstate = {prepublished}
 }
 ```
