@@ -288,7 +288,7 @@ min_session_duration_min  <- min(session_level$session_min)
 max_session_duration_min  <- max(session_level$session_min)
 
 # get per session statistics for interaction segments
-segments_df <- read_csv("data/analysis_20261018_221629_second_submission/interaction_segments.csv") %>%
+segments_df <- read_csv("data/pipeline_output/interaction_segments.csv") %>%
   arrange(video_name)
 # Create a clean lookup table of video_name -> session_id
 session_lookup <- quantex_sessions %>%
@@ -835,30 +835,26 @@ means <- cv_summary["mean", ]
 
 # build table
 metrics_df <- data.frame(
-  Metric = c("F1 Score", "Precision", "Recall", "Cohen's $\\kappa$"),
+  Metric = c("F1 Score", "Precision", "Recall"),
   Interacting = c(
     sprintf("%.2f", means$interacting_f1),
     sprintf("%.2f", means$interacting_precision),
-    sprintf("%.2f", means$interacting_recall),
-    "—"
+    sprintf("%.2f", means$interacting_recall)
   ),
   Available = c(
     sprintf("%.2f", means$available_f1),
     sprintf("%.2f", means$available_precision),
-    sprintf("%.2f", means$available_recall),
-    "—"
+    sprintf("%.2f", means$available_recall)
   ),
   Alone = c(
     sprintf("%.2f", means$alone_f1),
     sprintf("%.2f", means$alone_precision),
-    sprintf("%.2f", means$alone_recall),
-    "—"
+    sprintf("%.2f", means$alone_recall)
   ),
   `Macro AVG / Overall` = c(
     sprintf("%.2f", means$macro_avg_f1),
     sprintf("%.2f", means$macro_avg_precision),
-    sprintf("%.2f", means$macro_avg_recall),
-    sprintf("%.2f", means$overall_kappa)
+    sprintf("%.2f", means$macro_avg_recall)
   ),
   check.names = FALSE,
   stringsAsFactors = FALSE
@@ -956,7 +952,7 @@ To characterize the preschoolers' social ecology in the home environment, we rep
 ## Descriptive dynamics of home social states
 ```{r segment-descriptives, echo=FALSE, message=FALSE, warning=FALSE}
 # Compute summary statistics by interaction type
-interaction_segments <- read_csv("data/analysis_20261018_221629_second_submission/interaction_segments.csv")
+interaction_segments <- read_csv("data/pipeline_output/interaction_segments.csv")
 summary_stats <- interaction_segments %>%
   group_by(interaction_type) %>%
   summarise(
