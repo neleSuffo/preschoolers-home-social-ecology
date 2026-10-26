@@ -9,7 +9,7 @@ import logging
 from typing import Optional, Sequence
 import numpy as np
 
-from src.constants import Proximity
+from src.constants import Proximity as ProximityConstants
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class Proximity:
     """
 
     def __init__(self) -> None:
-        refs = Proximity.REFERENCE_VALUES
+        refs = ProximityConstants.REFERENCE_VALUES
         self.child_ref_close: float = refs["child_ref_close"]
         self.child_ref_far: float = refs["child_ref_far"]
         self.adult_ref_close: float = refs["adult_ref_close"]
@@ -42,7 +42,7 @@ class Proximity:
         self,
         bbox: Sequence[float],
         class_id: int,
-        aspect_ratio_threshold: float = Proximity.ASPECT_RATIO_THRESHOLD
+        aspect_ratio_threshold: float = ProximityConstants.ASPECT_RATIO_THRESHOLD
     ) -> Optional[float]:
         """
         Calculate normalized physical proximity for a single bounding box.
@@ -112,7 +112,7 @@ _PROXIMITY_INSTANCE = Proximity()
 def calculate_proximity(
     bbox: Sequence[float],
     class_id: int,
-    aspect_ratio_threshold: float = Proximity.ASPECT_RATIO_THRESHOLD,
+    aspect_ratio_threshold: float = ProximityConstants.ASPECT_RATIO_THRESHOLD,
 ) -> Optional[float]:
     """
     Calculate proximity for a single bounding box using the cached calculator.
