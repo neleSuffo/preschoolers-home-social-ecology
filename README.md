@@ -28,10 +28,10 @@ It provides an end-to-end, open-source computational pipeline that allows resear
 │   ├── video_list_*.txt              # Video subsets for validation and tuning
 │   └── frames_<state>/               # Sample frame sequences (alone, available, interacting)
 │
-├── models/                           # Fine-tuned model checkpoints (.pt)
+├── weights/                          # Fine-tuned model checkpoints (.pt)
 │   ├── yolov12_face_best.pt          # Face & age classifier (Hugging Face)
 │   ├── yolov12_person_best.pt        # Social partner detector (Hugging Face)
-│   └── babyhubert_stc_best.pt        # Child vocalization classifier (Hugging Face)
+│   └── babyhubert_stc_best.ckpt      # Child vocalization classifier (Hugging Face)
 │
 ├── paper/                            # Manuscript, Bayesian analyses & figures
 │   ├── analysis/                     # Standalone Bayesian analysis workflows
@@ -97,7 +97,7 @@ It provides an end-to-end, open-source computational pipeline that allows resear
 ```
 
 > **Note on Large Assets:**  
-> Large files (`data/inference.db` and checkpoints in `models/`) are managed externally. They can be downloaded directly from Zenodo and Hugging Face as described below.
+> Large files (`data/inference.db` and checkpoints in `weights/`) are managed externally. They can be downloaded directly from Zenodo and Hugging Face as described below.
 
 ## Installation & Setup
 
@@ -123,7 +123,7 @@ Download `inference.db` from the Zenodo record and place it into the `data/` dir
 Pre-trained model checkpoints are hosted on Hugging Face:  
 **[huggingface.co/NeSuf/preschoolers-home-social-ecology-weights](https://huggingface.co/NeSuf/preschoolers-home-social-ecology-weights)**
 
-Download the checkpoints into `models/`:
+Download the checkpoints into `weights/`:
 ```bash
 poetry run python -m src.feature_extraction.download_model_weights
 ```
