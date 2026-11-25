@@ -194,7 +194,7 @@ def main() -> None:
     parser.add_argument(
         "--video_path",
         type=Path,
-        default=AnalysisPaths.VIDEOS_LIST,
+        default=AnalysisPaths.VIDEO_LIST_INFERENCE,
         help="Path to a video file, folder of videos, or text list of video IDs",
     )
     parser.add_argument(
